@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <path id="badge-top-arc" d="M 28 82 A 52 52 0 0 1 132 82" fill="none"/>
+  </defs>
+  <circle cx="80" cy="80" r="75" fill="#1A2E3B" stroke="#B08840" stroke-width="1.5"/>
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#F3ECD8" stroke-width="0.5" opacity="0.6"/>
+  <text font-family="Inter, sans-serif" font-weight="500" font-size="8" letter-spacing="3" fill="#F3ECD8">
+    <textPath href="#badge-top-arc" startOffset="50%" text-anchor="middle">THE INVITATIONAL</textPath>
+  </text>
+  <text x="80" y="97" text-anchor="middle" font-family="Playfair Display, serif" font-style="italic" font-weight="500" font-size="40" fill="#F3ECD8">N&amp;P</text>
+  <line x1="52" y1="110" x2="108" y2="110" stroke="#B08840" stroke-width="0.5"/>
+  <text x="80" y="124" text-anchor="middle" font-family="Inter, sans-serif" font-weight="500" font-size="7" letter-spacing="2" fill="#B08840">EST. MMXXII</text>
+</svg>
