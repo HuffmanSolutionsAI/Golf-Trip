@@ -1,52 +1,35 @@
-import { createServerSupabase } from "@/lib/supabase/server";
-import { getCurrentPlayer } from "@/lib/server/currentPlayer";
+import Link from "next/link";
+import { getCurrentPlayer } from "@/lib/session";
 import { Card, CardContent, CardEyebrow, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRoundDate, formatTeeTime } from "@/lib/utils";
-import Link from "next/link";
-import type { LeaderboardRow, RoundRow, ChatMessageRow } from "@/lib/types";
+import { listRounds } from "@/lib/repo/rounds";
+import { computeLeaderboard } from "@/lib/repo/standings";
+import { listRecentMessagesDesc } from "@/lib/repo/chat";
+import type { RoundRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const player = await getCurrentPlayer();
-  const supabase = await createServerSupabase();
-
-  const [roundsRes, lbRes, chatRes] = await Promise.all([
-    supabase.from("rounds").select("*").order("day"),
-    supabase.from("v_leaderboard").select("*").order("rank"),
-    supabase
-      .from("chat_messages")
-      .select("*")
-      .order("posted_at", { ascending: false })
-      .limit(3),
-  ]);
-
-  const rounds = (roundsRes.data ?? []) as RoundRow[];
-  const leaderboard = (lbRes.data ?? []) as LeaderboardRow[];
-  const recentChat = (chatRes.data ?? []) as ChatMessageRow[];
-
+  const rounds = listRounds();
+  const leaderboard = computeLeaderboard();
+  const recentChat = listRecentMessagesDesc(3);
   const yourTeam = leaderboard.find((r) => r.team_id === player?.team_id);
   const now = new Date();
 
-  // Hero action decision tree
   const liveRound =
     rounds.find((r) => {
-      const roundDate = new Date(r.date + "T" + r.tee_time);
-      const endOfDay = new Date(roundDate);
+      const start = new Date(`${r.date}T${r.tee_time}`);
+      const endOfDay = new Date(start);
       endOfDay.setHours(23, 59, 59);
-      return !r.is_locked && roundDate <= now && now <= endOfDay;
+      return !r.is_locked && start <= now && now <= endOfDay;
     }) ?? null;
 
-  const upcomingRound = rounds.find((r) => {
-    const when = new Date(r.date + "T" + r.tee_time);
-    return when > now;
-  });
-
-  const allFinal = rounds.every((r) => r.is_locked);
+  const upcomingRound = rounds.find((r) => new Date(`${r.date}T${r.tee_time}`) > now);
+  const allFinal = rounds.every((r) => !!r.is_locked);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-      {/* Hero action card */}
       <Card>
         <CardContent className="flex flex-col gap-2">
           {liveRound ? (
@@ -57,7 +40,7 @@ export default async function HomePage() {
             <HeroUpcoming
               day={upcomingRound.day}
               course={upcomingRound.course_name}
-              when={new Date(upcomingRound.date + "T" + upcomingRound.tee_time)}
+              when={new Date(`${upcomingRound.date}T${upcomingRound.tee_time}`)}
             />
           ) : (
             <HeroFinal />
@@ -65,7 +48,6 @@ export default async function HomePage() {
         </CardContent>
       </Card>
 
-      {/* Your team */}
       {yourTeam && (
         <Card>
           <CardContent className="flex items-center justify-between">
@@ -82,21 +64,26 @@ export default async function HomePage() {
                 {ordinal(yourTeam.rank)} · {yourTeam.total_points} pts · {yourTeam.status_label}
               </div>
             </div>
-            <Link href="/leaderboard" className="text-[var(--color-gold)] text-xs uppercase tracking-widest font-ui">
+            <Link
+              href="/leaderboard"
+              className="text-[var(--color-gold)] text-xs uppercase tracking-widest font-ui"
+            >
               Leaderboard →
             </Link>
           </CardContent>
         </Card>
       )}
 
-      {/* Leaderboard preview */}
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
             <CardEyebrow>Leaderboard</CardEyebrow>
             <CardTitle>Top teams</CardTitle>
           </div>
-          <Link href="/leaderboard" className="text-xs uppercase tracking-widest font-ui text-[var(--color-gold)]">
+          <Link
+            href="/leaderboard"
+            className="text-xs uppercase tracking-widest font-ui text-[var(--color-gold)]"
+          >
             See full →
           </Link>
         </CardHeader>
@@ -119,7 +106,6 @@ export default async function HomePage() {
         </CardContent>
       </Card>
 
-      {/* Schedule snippet */}
       <Card>
         <CardHeader>
           <CardEyebrow>Schedule</CardEyebrow>
@@ -142,7 +128,6 @@ export default async function HomePage() {
         </CardContent>
       </Card>
 
-      {/* Chat preview */}
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div>
@@ -155,7 +140,9 @@ export default async function HomePage() {
         </CardHeader>
         <CardContent>
           {recentChat.length === 0 ? (
-            <p className="font-body-serif italic text-neutral-600">No messages yet — kick it off on the range.</p>
+            <p className="font-body-serif italic text-neutral-600">
+              No messages yet — kick it off on the range.
+            </p>
           ) : (
             <ul className="space-y-3 text-sm">
               {[...recentChat].reverse().map((m) => (
@@ -178,7 +165,6 @@ function ordinal(n: number): string {
 }
 
 function HeroLive({ roundDay, course }: { roundDay: number; course: string }) {
-  const href = `/day${roundDay}`;
   return (
     <>
       <CardEyebrow>Live now</CardEyebrow>
@@ -187,7 +173,7 @@ function HeroLive({ roundDay, course }: { roundDay: number; course: string }) {
       </div>
       <div className="font-body-serif italic text-neutral-700">{course}</div>
       <Link
-        href={href as never}
+        href={`/day${roundDay}` as never}
         className="mt-3 inline-flex self-start bg-[var(--color-gold)] text-[var(--color-navy-deep)] font-ui font-semibold uppercase tracking-wider text-xs rounded-md px-4 py-2 hover:bg-[var(--color-gold-light)]"
       >
         Go to scorecard →
@@ -196,15 +182,7 @@ function HeroLive({ roundDay, course }: { roundDay: number; course: string }) {
   );
 }
 
-function HeroUpcoming({
-  day,
-  course,
-  when,
-}: {
-  day: number;
-  course: string;
-  when: Date;
-}) {
+function HeroUpcoming({ day, course, when }: { day: number; course: string; when: Date }) {
   const diff = when.getTime() - Date.now();
   const hours = Math.max(0, Math.floor(diff / 3600000));
   const minutes = Math.max(0, Math.floor((diff % 3600000) / 60000));
@@ -238,13 +216,10 @@ function HeroFinal() {
 
 function RoundStatusChip({ round }: { round: RoundRow }) {
   const now = new Date();
-  const start = new Date(round.date + "T" + round.tee_time);
-  const status = round.is_locked
-    ? "FINAL"
-    : start > now
-      ? "UPCOMING"
-      : "LIVE";
-  const base = "text-[10px] font-ui font-semibold uppercase tracking-[0.25em] rounded px-2 py-1";
+  const start = new Date(`${round.date}T${round.tee_time}`);
+  const status = round.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";
+  const base =
+    "text-[10px] font-ui font-semibold uppercase tracking-[0.25em] rounded px-2 py-1";
   if (status === "UPCOMING")
     return <span className={`${base} bg-neutral-200 text-neutral-600`}>{status}</span>;
   if (status === "FINAL")
@@ -254,7 +229,9 @@ function RoundStatusChip({ round }: { round: RoundRow }) {
       </span>
     );
   return (
-    <span className={`${base} bg-[var(--color-oxblood)] text-[var(--color-cream)] pulse-live`}>
+    <span
+      className={`${base} bg-[var(--color-oxblood)] text-[var(--color-cream)] pulse-live`}
+    >
       {status}
     </span>
   );

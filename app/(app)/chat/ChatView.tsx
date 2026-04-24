@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useLiveRefresh } from "@/lib/client/useLiveRefresh";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,20 +24,7 @@ export function ChatView({ initial }: { initial: EnrichedMessage[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel("chat")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages" },
-        () => router.refresh(),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [router]);
+  useLiveRefresh(["chat_messages"]);
 
   useEffect(() => setMessages(initial), [initial]);
 

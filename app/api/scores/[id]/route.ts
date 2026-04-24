@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/server/requireAdmin";
+import { deleteScore } from "@/lib/repo/scores";
+import { emitChange } from "@/lib/events";
+import { recordAudit } from "@/lib/repo/audit";
 
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
-  const supabase = await createServerSupabase();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  const gate = await requireAdmin();
+  if (!gate.ok) return gate.response;
 
-  // Admin-only per RLS.
-  const { error } = await supabase.from("hole_scores").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 403 });
+  const { id } = await params;
+  deleteScore(id);
+  recordAudit({
+    playerId: gate.playerId,
+    action: "score.delete",
+    entityType: "hole_score",
+    entityId: id,
+  });
+  emitChange("hole_scores");
   return NextResponse.json({ ok: true });
 }

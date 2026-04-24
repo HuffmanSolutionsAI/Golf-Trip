@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useLiveRefresh } from "@/lib/client/useLiveRefresh";
 import type { LeaderboardRow, PlayerRow } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 type Props = {
   rows: LeaderboardRow[];
@@ -16,31 +15,9 @@ type Props = {
 export function LeaderboardView({ rows: initial, playersByTeam }: Props) {
   const [rows, setRows] = useState(initial);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const router = useRouter();
+  useLiveRefresh(["hole_scores", "rounds"]);
 
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel("leaderboard-scores")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "hole_scores" },
-        () => router.refresh(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "rounds" },
-        () => router.refresh(),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [router]);
-
-  useEffect(() => {
-    setRows(initial);
-  }, [initial]);
+  useEffect(() => setRows(initial), [initial]);
 
   if (rows.length === 0) {
     return (

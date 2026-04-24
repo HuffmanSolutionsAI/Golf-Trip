@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createAdminSupabase } from "@/lib/supabase/server";
+import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/server/requireAdmin";
+import { upsertPlayerScore, upsertScrambleScore } from "@/lib/repo/scores";
+import { recordAudit } from "@/lib/repo/audit";
+import { emitChange } from "@/lib/events";
 
 const Body = z.union([
   z.object({
-    scoreId: z.string().uuid(),
+    scoreId: z.string().min(1),
     strokes: z.number().int().min(1).max(15),
   }),
   z.object({
-    playerId: z.string().uuid().optional(),
-    scrambleEntryId: z.string().uuid().optional(),
-    roundId: z.string().uuid(),
+    playerId: z.string().min(1).optional(),
+    scrambleEntryId: z.string().min(1).optional(),
+    roundId: z.string().min(1),
     holeNumber: z.number().int().min(1).max(18),
     strokes: z.number().int().min(1).max(15),
   }),
@@ -20,21 +23,24 @@ const Body = z.union([
 export async function POST(req: Request) {
   const gate = await requireAdmin();
   if (!gate.ok) return gate.response;
+
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
 
-  const admin = createAdminSupabase();
+  const db = getDb();
 
   if ("scoreId" in parsed.data) {
-    const { error } = await admin
-      .from("hole_scores")
-      .update({
-        strokes: parsed.data.strokes,
-        entered_by: gate.userId,
-        entered_at: new Date().toISOString(),
-      })
-      .eq("id", parsed.data.scoreId);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    db.prepare(
+      "UPDATE hole_scores SET strokes = ?, entered_by = ?, entered_at = datetime('now') WHERE id = ?",
+    ).run(parsed.data.strokes, gate.playerId, parsed.data.scoreId);
+    recordAudit({
+      playerId: gate.playerId,
+      action: "score.override",
+      entityType: "hole_score",
+      entityId: parsed.data.scoreId,
+      after: { strokes: parsed.data.strokes },
+    });
+    emitChange("hole_scores");
     return NextResponse.json({ ok: true });
   }
 
@@ -46,33 +52,30 @@ export async function POST(req: Request) {
     );
   }
 
-  // Find existing.
-  let existingQ = admin
-    .from("hole_scores")
-    .select("id")
-    .eq("round_id", roundId)
-    .eq("hole_number", holeNumber);
-  if (playerId) existingQ = existingQ.eq("player_id", playerId);
-  else if (scrambleEntryId) existingQ = existingQ.eq("scramble_entry_id", scrambleEntryId);
-  const { data: existing } = await existingQ.maybeSingle();
-
-  if (existing) {
-    const { error } = await admin
-      .from("hole_scores")
-      .update({ strokes, entered_by: gate.userId, entered_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  } else {
-    const { error } = await admin.from("hole_scores").insert({
-      round_id: roundId,
-      hole_number: holeNumber,
-      strokes,
-      player_id: playerId ?? null,
-      scramble_entry_id: scrambleEntryId ?? null,
-      entered_by: gate.userId,
+  if (playerId) {
+    const { scoreId } = upsertPlayerScore({
+      roundId, playerId, holeNumber, strokes, enteredBy: gate.playerId,
     });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    recordAudit({
+      playerId: gate.playerId,
+      action: "score.override",
+      entityType: "hole_score",
+      entityId: scoreId,
+      after: { roundId, playerId, holeNumber, strokes },
+    });
+  } else {
+    const { scoreId } = upsertScrambleScore({
+      roundId, scrambleEntryId: scrambleEntryId!, holeNumber, strokes, enteredBy: gate.playerId,
+    });
+    recordAudit({
+      playerId: gate.playerId,
+      action: "score.override",
+      entityType: "hole_score",
+      entityId: scoreId,
+      after: { roundId, scrambleEntryId, holeNumber, strokes },
+    });
   }
 
+  emitChange("hole_scores");
   return NextResponse.json({ ok: true });
 }
