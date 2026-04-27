@@ -8,37 +8,38 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const encoder = new TextEncoder();
+  let closed = false;
+  let unsub: (() => void) | null = null;
+  let ping: ReturnType<typeof setInterval> | null = null;
+
   const stream = new ReadableStream({
     start(controller) {
-      const send = (data: string) => controller.enqueue(encoder.encode(data));
-      // Initial hello + retry hint.
+      const send = (data: string) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(data));
+        } catch {
+          closed = true;
+          if (ping) clearInterval(ping);
+          if (unsub) unsub();
+        }
+      };
+
       send(`retry: 5000\n\n`);
       send(`event: hello\ndata: {"ok":true}\n\n`);
 
-      const unsub = subscribe((ev) => {
+      unsub = subscribe((ev) => {
         send(`event: change\ndata: ${JSON.stringify(ev)}\n\n`);
       });
 
-      // Keepalive every 20s so the tunnel doesn't close idle connections.
-      const ping = setInterval(() => {
+      ping = setInterval(() => {
         send(`: ping\n\n`);
       }, 20_000);
-
-      const close = () => {
-        clearInterval(ping);
-        unsub();
-        try {
-          controller.close();
-        } catch {
-          /* already closed */
-        }
-      };
-      // @ts-expect-error - controller.signal doesn't exist in all envs but we register onabort below
-      if (controller.signal) controller.signal.addEventListener("abort", close);
-      // In practice, Next.js will abort the Request and close the underlying stream.
     },
     cancel() {
-      // Best-effort cleanup on client disconnect.
+      closed = true;
+      if (ping) clearInterval(ping);
+      if (unsub) unsub();
     },
   });
 
