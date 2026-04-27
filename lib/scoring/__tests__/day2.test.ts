@@ -26,7 +26,7 @@ const partial = (raw: number, holes: number): Map<number, number> => {
 };
 
 describe("computeDay2PoolRanks — complete pool", () => {
-  it("awards 5/3/1/0/0 by rank", () => {
+  it("awards 4/3/2/1/0 by rank", () => {
     const entries: Day2EntryInput[] = [
       { id: "t1", teamId: "team1", holeScores: scoresFull(65), manualRank: null },
       { id: "t2", teamId: "team2", holeScores: scoresFull(70), manualRank: null },
@@ -36,10 +36,10 @@ describe("computeDay2PoolRanks — complete pool", () => {
     ];
     const r = computeDay2PoolRanks(entries);
     expect(r.get("t1")!.rank).toBe(1);
-    expect(r.get("t1")!.points).toBe(5);
+    expect(r.get("t1")!.points).toBe(4);
     expect(r.get("t2")!.points).toBe(3);
-    expect(r.get("t3")!.points).toBe(1);
-    expect(r.get("t4")!.points).toBe(0);
+    expect(r.get("t3")!.points).toBe(2);
+    expect(r.get("t4")!.points).toBe(1);
     expect(r.get("t5")!.points).toBe(0);
     entries.forEach((e) => {
       expect(r.get(e.id)!.projected).toBe(false);
@@ -72,7 +72,7 @@ describe("computeDay2PoolRanks — complete pool", () => {
     ];
     const r = computeDay2PoolRanks(entries);
     expect(r.get("b")!.rank).toBe(1);
-    expect(r.get("b")!.points).toBe(5);
+    expect(r.get("b")!.points).toBe(4);
     expect(r.get("a")!.rank).toBe(2);
     expect(r.get("a")!.points).toBe(3);
   });

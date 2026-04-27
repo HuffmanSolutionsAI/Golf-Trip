@@ -1,5 +1,5 @@
 // Day 2 — two pools of 5, 2-man scramble. Rank per pool.
-// Points by rank: 1=5, 2=3, 3=1, 4=0, 5=0.
+// Points by rank: 1=4, 2=3, 3=2, 4=1, 5=0. (10 per pool, 20 total.)
 
 export type Day2EntryInput = {
   id: string;
@@ -19,10 +19,10 @@ export type Day2EntryResult = {
 };
 
 const POOL_POINTS_BY_RANK: Record<number, number> = {
-  1: 5,
+  1: 4,
   2: 3,
-  3: 1,
-  4: 0,
+  3: 2,
+  4: 1,
   5: 0,
 };
 

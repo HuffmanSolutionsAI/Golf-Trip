@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getCurrentPlayer } from "@/lib/session";
 import { getTeam, listPlayers, listPlayersByTeam } from "@/lib/repo/players";
 import {
   computeDay1MatchStates,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/repo/standings";
 import { listScrambleEntries } from "@/lib/repo/scores";
 import { Card, CardContent, CardEyebrow } from "@/components/ui/card";
+import { TeamNameEditor } from "./TeamNameEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,10 @@ export default async function TeamDetailPage({
   const team = getTeam(id);
   if (!team) notFound();
 
+  const me = await getCurrentPlayer();
+  const canEditName =
+    !!me && (!!me.is_admin || (me.team_id === id && me.team_slot === "A"));
+
   const players = listPlayersByTeam(id);
   const playerIds = new Set(players.map((p) => p.id));
   const day1 = computeDay1MatchStates().filter(
@@ -27,20 +33,18 @@ export default async function TeamDetailPage({
   );
   const day2 = computeDay2PoolRankRows().filter((r) => r.team_id === id);
   const day3 = computeDay3StandingRows().filter((r) => r.team_id === id)[0] ?? null;
-  const entries = listScrambleEntries().filter((e) => e.team_id === id);
-  const entryById = new Map(entries.map((e) => [e.id, e]));
   const nameById = new Map(listPlayers().map((p) => [p.id, p.name]));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <span
-          className="inline-block w-4 h-4 rounded-full"
+          className="inline-block w-4 h-4 rounded-full mt-3 shrink-0"
           style={{ backgroundColor: team.display_color }}
         />
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="eyebrow">Team</div>
-          <h1 className="font-display text-3xl text-[var(--color-navy)]">{team.name}</h1>
+          <TeamNameEditor teamId={team.id} initialName={team.name} canEdit={canEditName} />
         </div>
       </div>
 

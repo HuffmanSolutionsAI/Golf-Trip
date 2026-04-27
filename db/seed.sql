@@ -26,15 +26,15 @@ INSERT OR IGNORE INTO players (id, name, handicap, team_id, team_slot, is_admin)
   ('p-pincus',  'Pincus',   6.8, 'team-3', 'A', 0),
   ('p-ric',     'Ric',     11.0, 'team-3', 'B', 0),
   ('p-luke',    'Luke',    15.3, 'team-3', 'C', 0),
-  ('p-mason',   'Mason',   21.4, 'team-3', 'D', 0),
+  ('p-bennett', 'Bennett', 22.8, 'team-3', 'D', 0),
   ('p-nate',    'Nate',     7.4, 'team-4', 'A', 0),
   ('p-mcardle', 'McArdle', 10.8, 'team-4', 'B', 0),
   ('p-davis',   'Davis',   15.6, 'team-4', 'C', 0),
-  ('p-mallen',  'Mallen',  20.1, 'team-4', 'D', 0),
+  ('p-mason',   'Mason',   21.4, 'team-4', 'D', 0),
   ('p-keller',  'Keller',   7.6, 'team-5', 'A', 0),
   ('p-mellis',  'Mellis',  10.5, 'team-5', 'B', 0),
-  ('p-bennett', 'Bennett', 19.8, 'team-5', 'C', 0),
-  ('p-cota',    'Cota',    20.0, 'team-5', 'D', 0);
+  ('p-cota',    'Cota',    20.0, 'team-5', 'C', 0),
+  ('p-mallen',  'Mallen',  20.1, 'team-5', 'D', 0);
 
 -- ------------------------------------------------------------------
 -- Rounds
@@ -116,12 +116,12 @@ INSERT OR IGNORE INTO scramble_participants (scramble_entry_id, player_id) VALUE
   ('s2-t1-bc','p-tom'),     ('s2-t1-bc','p-foley'),
   ('s2-t2-ad','p-ham'),     ('s2-t2-ad','p-matkins'),
   ('s2-t2-bc','p-byrnes'),  ('s2-t2-bc','p-bands'),
-  ('s2-t3-ad','p-pincus'),  ('s2-t3-ad','p-mason'),
+  ('s2-t3-ad','p-pincus'),  ('s2-t3-ad','p-bennett'),
   ('s2-t3-bc','p-ric'),     ('s2-t3-bc','p-luke'),
-  ('s2-t4-ad','p-nate'),    ('s2-t4-ad','p-mallen'),
+  ('s2-t4-ad','p-nate'),    ('s2-t4-ad','p-mason'),
   ('s2-t4-bc','p-mcardle'), ('s2-t4-bc','p-davis'),
-  ('s2-t5-ad','p-keller'),  ('s2-t5-ad','p-cota'),
-  ('s2-t5-bc','p-mellis'),  ('s2-t5-bc','p-bennett');
+  ('s2-t5-ad','p-keller'),  ('s2-t5-ad','p-mallen'),
+  ('s2-t5-bc','p-mellis'),  ('s2-t5-bc','p-cota');
 
 -- ------------------------------------------------------------------
 -- Scramble entries — Day 3 (one per team, all 4 players)
@@ -136,6 +136,6 @@ INSERT OR IGNORE INTO scramble_entries (id, round_id, team_id, pool) VALUES
 INSERT OR IGNORE INTO scramble_participants (scramble_entry_id, player_id) VALUES
   ('s3-t1','p-reid'),    ('s3-t1','p-tom'),     ('s3-t1','p-foley'),   ('s3-t1','p-bot'),
   ('s3-t2','p-ham'),     ('s3-t2','p-byrnes'),  ('s3-t2','p-bands'),   ('s3-t2','p-matkins'),
-  ('s3-t3','p-pincus'),  ('s3-t3','p-ric'),     ('s3-t3','p-luke'),    ('s3-t3','p-mason'),
-  ('s3-t4','p-nate'),    ('s3-t4','p-mcardle'), ('s3-t4','p-davis'),   ('s3-t4','p-mallen'),
-  ('s3-t5','p-keller'),  ('s3-t5','p-mellis'),  ('s3-t5','p-bennett'), ('s3-t5','p-cota');
+  ('s3-t3','p-pincus'),  ('s3-t3','p-ric'),     ('s3-t3','p-luke'),    ('s3-t3','p-bennett'),
+  ('s3-t4','p-nate'),    ('s3-t4','p-mcardle'), ('s3-t4','p-davis'),   ('s3-t4','p-mason'),
+  ('s3-t5','p-keller'),  ('s3-t5','p-mellis'),  ('s3-t5','p-cota'),    ('s3-t5','p-mallen');

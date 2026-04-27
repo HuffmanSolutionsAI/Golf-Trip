@@ -31,3 +31,9 @@ export function getTeam(id: string): TeamRow | null {
   const row = getDb().prepare("SELECT * FROM teams WHERE id = ?").get(id) as TeamRow | undefined;
   return row ?? null;
 }
+
+export function updateTeamName(teamId: string, name: string): void {
+  getDb()
+    .prepare("UPDATE teams SET name = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(name, teamId);
+}
