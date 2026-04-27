@@ -20,7 +20,7 @@ When a pool is incomplete (any entry < 18 holes), points are 0 for all entries b
 
 ## SQL view: v_day1_match_state stroke allocation
 
-Stroke holes are recomputed in SQL per match by picking the `strokes_given` holes with the lowest `handicap_index`. We only return stroke holes if every hole in the round has a non-null handicap_index (i.e., once Holly data is populated). Until then, the view treats it as "strokes are owed but not yet allocated" — nets are calculated as gross (no deductions). The TS engine has the same behavior.
+Stroke holes are recomputed in SQL per match by picking the `strokes_given` holes with the lowest `handicap_index`. We only return stroke holes if every hole in the round has a non-null handicap_index (i.e., once Magnolia data is populated). Until then, the view treats it as "strokes are owed but not yet allocated" — nets are calculated as gross (no deductions). The TS engine has the same behavior.
 
 ## Projected ranking rule (brief §10.6)
 

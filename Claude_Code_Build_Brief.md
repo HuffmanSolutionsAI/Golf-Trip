@@ -275,7 +275,7 @@ create table holes (
   round_id uuid not null references rounds(id) on delete cascade,
   hole_number int not null check (hole_number between 1 and 18),
   par int not null check (par between 3 and 5),
-  handicap_index int check (handicap_index between 1 and 18),  -- nullable for Holly until filled
+  handicap_index int check (handicap_index between 1 and 18),  -- nullable for Magnolia until filled
   yardage int,                          -- nullable, from the Gold/Blue tees we're playing
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
@@ -454,7 +454,7 @@ Mark Reid as `is_admin = true`.
 
 ```sql
 insert into rounds (day, date, course_name, total_par, format, tee_time) values
-  (1, '2026-05-07', 'Pinewild CC — Holly Course',   72, 'singles',       '10:21:00'),
+  (1, '2026-05-07', 'Pinewild CC — Magnolia Course',   72, 'singles',       '10:21:00'),
   (2, '2026-05-08', 'Talamore Golf Club',           71, 'scramble_2man', '08:45:00'),
   (3, '2026-05-09', 'Hyland Golf Club',             72, 'scramble_4man', '10:00:00');
 ```
@@ -507,12 +507,12 @@ Hole  Par  Hdcp
  18    4   12
 ```
 
-### 7.6 Holes — Pinewild Holly (Day 1), par 72 — DATA NOT YET KNOWN
+### 7.6 Holes — Pinewild Magnolia (Day 1), par 72 — DATA NOT YET KNOWN
 
 Pinewild is private and hole data isn't publicly available. For seed purposes, insert 18 placeholder rows with `par = 4` and `handicap_index = null`, with a par-72 total split as 4 par-3s + 10 par-4s + 4 par-5s in a plausible order. Mark this clearly in a comment in `seed.sql`:
 
 ```sql
--- PLACEHOLDER: Pinewild Holly hole-level data will be filled in at the pro shop on 5/7.
+-- PLACEHOLDER: Pinewild Magnolia hole-level data will be filled in at the pro shop on 5/7.
 -- Admin UI allows updating par + handicap_index per hole. Day 1 stroke allocation
 -- will re-compute when handicap_index values are populated.
 ```
@@ -717,7 +717,7 @@ export function computeStrokeAllocation(
   const strokeGiverId = r1 > r2 ? p1.id : p2.id;
 
   // Pick strokesGiven hardest holes (lowest handicap_index).
-  // If handicap_index is null (Pinewild Holly pre-fill), return empty — commissioner
+  // If handicap_index is null (Pinewild Magnolia pre-fill), return empty — commissioner
   // will re-seed once data is entered.
   const withIndex = holes.filter(h => h.handicap_index !== null);
   if (withIndex.length < strokesGiven) {
@@ -903,7 +903,7 @@ Three cards, one per round:
 ```
 ┌─────────────────────────────────┐
 │ DAY 1 · THU 5/7 · 10:21 AM      │
-│ Pinewild CC — Holly Course      │
+│ Pinewild CC — Magnolia Course   │
 │ Singles · Net match play        │
 │ [ FINAL ]  Team 2 wins 8–4–6–0–2│
 │ View matches →                  │
@@ -953,7 +953,7 @@ Layout:
 
 ```
 ┌──────────────────────────────────┐
-│ ← Match 1 · Pinewild Holly       │
+│ ← Match 1 · Pinewild Magnolia    │
 │                                  │
 │ Reid (HCP 3)    Pincus (HCP 7)   │
 │ Team 1          Team 2           │
@@ -1020,7 +1020,7 @@ Layout:
 Commissioner only. Tabs or sections:
 
 1. **Players** — inline edit handicap for each player. "Re-seed Day 1 matches" button (only enabled before Day 1 locks).
-2. **Holes** — for each round, a table of 18 holes with par + handicap_index + yardage editable. Especially needed for Pinewild Holly on Day 1 morning.
+2. **Holes** — for each round, a table of 18 holes with par + handicap_index + yardage editable. Especially needed for Pinewild Magnolia on Day 1 morning.
 3. **Rounds** — lock/unlock each round.
 4. **Score override** — search any hole score across any round, edit or delete.
 5. **Day 2 tiebreak** — for each Day 2 entry, a manual rank input (overrides natural order if set).
@@ -1080,7 +1080,7 @@ Execute in order. At each checkpoint, stop and summarize what was done so I can 
 
 ### Phase 2 — Seed data & read-only screens (checkpoint 2)
 
-- [ ] `seed.sql` complete per §7 — teams, 20 players, 3 rounds, 54 hole rows (Talamore + Hyland real data; Holly placeholders), 10 Day 1 matches with frozen stroke allocations, 10 Day 2 scramble entries, 5 Day 3 entries, participants populated
+- [ ] `seed.sql` complete per §7 — teams, 20 players, 3 rounds, 54 hole rows (Talamore + Hyland real data; Magnolia placeholders), 10 Day 1 matches with frozen stroke allocations, 10 Day 2 scramble entries, 5 Day 3 entries, participants populated
 - [ ] Brand components: `Badge`, `Wordmark`, `TopNav`, `BottomTabBar`, `Sidebar`
 - [ ] `/schedule` page live with 3 round cards
 - [ ] `/teams` page live with 5 team cards
@@ -1126,12 +1126,12 @@ Execute in order. At each checkpoint, stop and summarize what was done so I can 
 - [ ] System auto-posts on: match final, lead change, eagle/better, round locked, tee-time alerts
 - [ ] Realtime subscriptions on leaderboard, match/entry detail pages, chat
 - [ ] Admin: handicap editor with "re-seed Day 1 matches" button
-- [ ] Admin: hole par/handicap_index editor (especially for Holly)
+- [ ] Admin: hole par/handicap_index editor (especially for Magnolia)
 - [ ] Admin: score override
 - [ ] Admin: audit log viewer
 - [ ] Admin: round lock/unlock
 
-**Checkpoint**: Reid edits a handicap, sees matches re-seed; edits Holly hole data, sees stroke allocations update; posts a chat message; triggers an eagle auto-post by editing a score; locks a round.
+**Checkpoint**: Reid edits a handicap, sees matches re-seed; edits Magnolia hole data, sees stroke allocations update; posts a chat message; triggers an eagle auto-post by editing a score; locks a round.
 
 ### Phase 6 — Offline, polish, QA (checkpoint 6)
 

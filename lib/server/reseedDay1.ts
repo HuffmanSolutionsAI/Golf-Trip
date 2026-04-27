@@ -1,5 +1,5 @@
 // Re-computes Day 1 stroke allocations for every match.
-// Called after a handicap edit or after Holly's hole handicap_indexes are updated.
+// Called after a handicap edit or after Magnolia's hole handicap_indexes are updated.
 
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { computeStrokeAllocation } from "@/lib/scoring/handicaps";

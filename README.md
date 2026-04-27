@@ -91,8 +91,8 @@ Update the Supabase **Site URL** to `https://np.huffmanai.com` once the cert lan
 
 **Night before Day 1 (May 6)**
 
-- [ ] Open `/admin → Holes → Day 1 · Pinewild Holly` — holes are placeholders. Fill in correct par + handicap_index from the pro shop card.
-- [ ] Tap **Re-seed Day 1 matches** under `/admin → Players`. Handicaps will re-allocate strokes using the corrected Holly handicap_indexes.
+- [ ] Open `/admin → Holes → Day 1 · Pinewild Magnolia` — holes are placeholders. Fill in correct par + handicap_index from the pro shop card.
+- [ ] Tap **Re-seed Day 1 matches** under `/admin → Players`. Handicaps will re-allocate strokes using the corrected Magnolia handicap_indexes.
 - [ ] Confirm every player has signed in and claimed their slot — check `/admin → Players` for the "Claimed" column.
 
 **Each morning**
@@ -163,7 +163,7 @@ Midnight Oak palette, N&P monogram badge (inline SVG at `components/brand/Badge.
 
 ## Known gaps / next up
 
-- Pinewild Holly hole-level data: placeholder, fill in via `/admin` before Day 1.
+- Pinewild Magnolia hole-level data: placeholder, fill in via `/admin` before Day 1.
 - The "tee-time alert" auto-post fires on any authed page load within 25–35 min of a tee time. On Vercel Hobby we can't run a real cron.
 - No offline write queue yet — if a phone loses signal mid-entry, the save fails and the player sees an inline error. Phase 6 will add optimistic queuing + a retry indicator.
 

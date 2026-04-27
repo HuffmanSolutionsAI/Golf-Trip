@@ -57,14 +57,14 @@ on conflict (name) do nothing;
 -- Rounds
 -- ------------------------------------------------------------------
 insert into public.rounds (day, date, course_name, total_par, format, tee_time) values
-  (1, '2026-05-07', 'Pinewild CC — Holly Course', 72, 'singles',       '10:21:00'),
+  (1, '2026-05-07', 'Pinewild CC — Magnolia Course', 72, 'singles',       '10:21:00'),
   (2, '2026-05-08', 'Talamore Golf Club',         71, 'scramble_2man', '08:45:00'),
   (3, '2026-05-09', 'Hyland Golf Club',           72, 'scramble_4man', '10:00:00')
 on conflict (day) do nothing;
 
 -- ------------------------------------------------------------------
--- Holes — Day 1 Pinewild Holly (placeholder)
--- PLACEHOLDER: Pinewild Holly hole-level data will be filled in at the
+-- Holes — Day 1 Pinewild Magnolia (placeholder)
+-- PLACEHOLDER: Pinewild Magnolia hole-level data will be filled in at the
 -- pro shop on 5/7. Admin UI allows updating par + handicap_index per hole.
 -- Day 1 stroke allocation will re-compute when handicap_index values are populated.
 -- ------------------------------------------------------------------
@@ -112,9 +112,9 @@ on conflict (round_id, hole_number) do nothing;
 -- ------------------------------------------------------------------
 -- Matches — Day 1 singles
 -- Stroke allocation is computed per §10.2 against current handicaps.
--- Since Holly's handicap_index is null at seed time, strokeHoles is
+-- Since Magnolia's handicap_index is null at seed time, strokeHoles is
 -- unknown — we still store strokes_given and stroke_giver so the view
--- can compute nets once Holly's hdcp indexes are populated.
+-- can compute nets once Magnolia's hdcp indexes are populated.
 -- ------------------------------------------------------------------
 with
   r as (select id from public.rounds where day = 1),

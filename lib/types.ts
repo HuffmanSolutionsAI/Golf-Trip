@@ -169,3 +169,51 @@ export type Day3StandingsRow = {
   total_points: number;
   projected: boolean;
 };
+
+// Tournament-style daily leaderboard rows (one per competitor).
+
+export type Day1PlayerLeaderboardRow = {
+  player_id: string;
+  match_id: string;
+  round_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  gross: number;
+  holes_thru: number;
+  par_thru: number;
+  strokes_received_thru: number;
+  net_thru: number;
+  to_par: number;
+  rank: number;
+};
+
+export type Day2EntryLeaderboardRow = {
+  entry_id: string;
+  round_id: string;
+  team_id: string;
+  pool: "AD" | "BC";
+  team_name: string;
+  display_color: string;
+  sort_order: number;
+  gross: number;
+  holes_thru: number;
+  par_thru: number;
+  to_par: number;
+  rank: number;
+};
+
+export type Day3EntryLeaderboardRow = {
+  entry_id: string;
+  round_id: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  sort_order: number;
+  gross: number;
+  holes_thru: number;
+  par_thru: number;
+  to_par: number;
+  rank: number;
+};
