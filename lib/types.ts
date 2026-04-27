@@ -174,3 +174,61 @@ export type Day3StandingsRow = {
   total_points: number;
   projected: boolean;
 };
+
+// Tournament-style daily leaderboard rows (server-computed for the leaderboard page).
+
+export type Day1IndividualRow = {
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  team_slot: "A" | "B" | "C" | "D";
+  handicap: number;
+  match_id: string;
+  match_number: number;
+  opponent_id: string;
+  opponent_name: string;
+  gross_total: number;
+  par_thru: number;
+  score_to_par: number;
+  holes_thru: number;
+  match_status: "pending" | "in_progress" | "final";
+  current_holes_up: number; // signed from this player's perspective
+  is_winner: boolean | null;
+  rank: number;
+};
+
+export type Day2EntryDisplayRow = {
+  entry_id: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  pool: "AD" | "BC";
+  participant_names: string[];
+  team_raw: number;
+  par_thru: number;
+  score_to_par: number;
+  holes_thru: number;
+  rank_in_pool: number;
+  rank_overall: number;
+  points: number;
+  projected: boolean;
+};
+
+export type Day3EntryDisplayRow = {
+  entry_id: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  participant_names: string[];
+  team_raw: number;
+  par_thru: number;
+  score_to_par: number;
+  holes_thru: number;
+  rank: number;
+  placement_points: number;
+  bonus_points: number;
+  total_points: number;
+  projected: boolean;
+};

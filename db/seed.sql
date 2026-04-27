@@ -40,12 +40,12 @@ INSERT OR IGNORE INTO players (id, name, handicap, team_id, team_slot, is_admin)
 -- Rounds
 -- ------------------------------------------------------------------
 INSERT OR IGNORE INTO rounds (id, day, date, course_name, total_par, format, tee_time) VALUES
-  ('round-1', 1, '2026-05-07', 'Pinewild CC — Holly Course', 72, 'singles',       '10:21:00'),
+  ('round-1', 1, '2026-05-07', 'Pinewild CC — Magnolia Course', 72, 'singles',       '10:21:00'),
   ('round-2', 2, '2026-05-08', 'Talamore Golf Club',         71, 'scramble_2man', '08:45:00'),
   ('round-3', 3, '2026-05-09', 'Hyland Golf Club',           72, 'scramble_4man', '10:00:00');
 
 -- ------------------------------------------------------------------
--- Holes — Day 1 Pinewild Holly (placeholders; fill in at pro shop 5/7)
+-- Holes — Day 1 Pinewild Magnolia (placeholders; fill in at pro shop 5/7)
 -- ------------------------------------------------------------------
 INSERT OR IGNORE INTO holes (id, round_id, hole_number, par, handicap_index) VALUES
   ('h1-01','round-1', 1, 4, NULL),  ('h1-02','round-1', 2, 5, NULL),

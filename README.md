@@ -138,8 +138,8 @@ Now the mini boots, Next.js comes up automatically, cloudflared connects, and `n
 
 **Night before Day 1 (May 6)**
 
-- [ ] Open `/admin → Holes → Day 1 · Pinewild Holly` — holes are placeholders. Fill in correct par + handicap_index from the pro shop card.
-- [ ] Tap **Re-seed Day 1 matches** under `/admin → Players`. Stroke allocations refresh using the corrected Holly handicap indexes.
+- [ ] Open `/admin → Holes → Day 1 · Pinewild Magnolia` — holes are placeholders. Fill in correct par + handicap_index from the pro shop card.
+- [ ] Tap **Re-seed Day 1 matches** under `/admin → Players`. Stroke allocations refresh using the corrected Magnolia handicap indexes.
 - [ ] Verify the first foursome can enter scores (one test score from each phone).
 
 **Each morning**

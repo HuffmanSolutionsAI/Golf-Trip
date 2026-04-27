@@ -12,8 +12,11 @@ import { computeDay1MatchResult } from "@/lib/scoring/day1";
 import { computeDay2PoolRanks } from "@/lib/scoring/day2";
 import { computeDay3Standings } from "@/lib/scoring/day3";
 import type {
+  Day1IndividualRow,
   Day1MatchStateRow,
+  Day2EntryDisplayRow,
   Day2PoolRankRow,
+  Day3EntryDisplayRow,
   Day3StandingsRow,
   HoleScoreRow,
   LeaderboardRow,
@@ -169,6 +172,201 @@ export function computeDay3StandingRows(): Day3StandingsRow[] {
       projected: r.projected,
     };
   });
+}
+
+// ---- Tournament-style daily leaderboards ----
+
+function rankByScoreToPar<T extends { score_to_par: number; holes_thru: number; player_name?: string; team_name?: string }>(
+  rows: T[],
+): (T & { rank: number })[] {
+  // Sort: players who have started come first ranked by score_to_par; non-starters go last.
+  const sorted = [...rows].sort((a, b) => {
+    const aStarted = a.holes_thru > 0;
+    const bStarted = b.holes_thru > 0;
+    if (aStarted && !bStarted) return -1;
+    if (!aStarted && bStarted) return 1;
+    if (aStarted && bStarted) return a.score_to_par - b.score_to_par;
+    const labelA = (a.player_name ?? a.team_name ?? "") as string;
+    const labelB = (b.player_name ?? b.team_name ?? "") as string;
+    return labelA.localeCompare(labelB);
+  });
+  // Competition rank — ties share rank, only over started rows.
+  let lastKey: number | null = null;
+  let lastRank = 0;
+  return sorted.map((r, i) => {
+    if (r.holes_thru === 0) {
+      return { ...r, rank: 0 }; // 0 = not started
+    }
+    if (lastKey === null || r.score_to_par !== lastKey) {
+      lastRank = i + 1;
+      lastKey = r.score_to_par;
+    }
+    return { ...r, rank: lastRank };
+  });
+}
+
+export function computeDay1IndividualLeaderboard(): Day1IndividualRow[] {
+  const s = snapshot();
+  const day1 = s.rounds.find((r) => r.day === 1);
+  if (!day1) return [];
+  const day1Holes = s.holes.filter((h) => h.round_id === day1.id);
+  const parByHole = new Map(day1Holes.map((h) => [h.hole_number, h.par]));
+  const teams = new Map(s.teams.map((t) => [t.id, t]));
+  const players = new Map(s.players.map((p) => [p.id, p]));
+
+  const rows: Omit<Day1IndividualRow, "rank">[] = [];
+  for (const m of s.matches) {
+    const p1 = players.get(m.player1_id);
+    const p2 = players.get(m.player2_id);
+    if (!p1 || !p2) continue;
+    const alloc = computeStrokeAllocation(p1, p2, day1Holes);
+    const p1Scores = scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === p1.id);
+    const p2Scores = scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === p2.id);
+    const res = computeDay1MatchResult(
+      {
+        p1Id: p1.id,
+        p2Id: p2.id,
+        strokeGiverId: m.stroke_giver_id,
+        strokesGiven: m.strokes_given,
+        strokeHoles: alloc.strokeHoles,
+      },
+      p1Scores,
+      p2Scores,
+    );
+    const p1ParThru = [...p1Scores.keys()].reduce((sum, h) => sum + (parByHole.get(h) ?? 0), 0);
+    const p2ParThru = [...p2Scores.keys()].reduce((sum, h) => sum + (parByHole.get(h) ?? 0), 0);
+    const t1 = teams.get(p1.team_id)!;
+    const t2 = teams.get(p2.team_id)!;
+
+    rows.push({
+      player_id: p1.id,
+      player_name: p1.name,
+      team_id: p1.team_id,
+      team_name: t1.name,
+      display_color: t1.display_color,
+      team_slot: p1.team_slot,
+      handicap: p1.handicap,
+      match_id: m.id,
+      match_number: m.match_number,
+      opponent_id: p2.id,
+      opponent_name: p2.name,
+      gross_total: res.p1TotalGross,
+      par_thru: p1ParThru,
+      score_to_par: res.p1TotalGross - p1ParThru,
+      holes_thru: res.p1HolesPlayed,
+      match_status: res.status,
+      current_holes_up: res.currentHolesUp,
+      is_winner: res.status === "final" ? res.winnerId === p1.id : null,
+    });
+    rows.push({
+      player_id: p2.id,
+      player_name: p2.name,
+      team_id: p2.team_id,
+      team_name: t2.name,
+      display_color: t2.display_color,
+      team_slot: p2.team_slot,
+      handicap: p2.handicap,
+      match_id: m.id,
+      match_number: m.match_number,
+      opponent_id: p1.id,
+      opponent_name: p1.name,
+      gross_total: res.p2TotalGross,
+      par_thru: p2ParThru,
+      score_to_par: res.p2TotalGross - p2ParThru,
+      holes_thru: res.p2HolesPlayed,
+      match_status: res.status,
+      current_holes_up: -res.currentHolesUp,
+      is_winner: res.status === "final" ? res.winnerId === p2.id : null,
+    });
+  }
+  return rankByScoreToPar(rows);
+}
+
+export function computeDay2EntryLeaderboard(): Day2EntryDisplayRow[] {
+  const s = snapshot();
+  const day2 = s.rounds.find((r) => r.day === 2);
+  if (!day2) return [];
+  const day2Holes = s.holes.filter((h) => h.round_id === day2.id);
+  const parByHole = new Map(day2Holes.map((h) => [h.hole_number, h.par]));
+  const teams = new Map(s.teams.map((t) => [t.id, t]));
+  const players = new Map(s.players.map((p) => [p.id, p]));
+
+  const poolRows = computeDay2PoolRankRows();
+  const poolRowMap = new Map(poolRows.map((r) => [r.entry_id, r]));
+
+  const entries = s.entries.filter((e) => e.round_id === day2.id);
+  const rows: Omit<Day2EntryDisplayRow, "rank_overall">[] = entries.map((e) => {
+    const team = teams.get(e.team_id)!;
+    const ranked = poolRowMap.get(e.id)!;
+    const scores = s.scores.filter((x) => x.scramble_entry_id === e.id);
+    const parThru = scores.reduce((sum, x) => sum + (parByHole.get(x.hole_number) ?? 0), 0);
+    const partIds = s.participants.filter((p) => p.scramble_entry_id === e.id).map((p) => p.player_id);
+    const partNames = partIds
+      .map((id) => players.get(id)?.name)
+      .filter((n): n is string => !!n)
+      .sort();
+    return {
+      entry_id: e.id,
+      team_id: e.team_id,
+      team_name: team.name,
+      display_color: team.display_color,
+      pool: ranked.pool,
+      participant_names: partNames,
+      team_raw: ranked.team_raw,
+      par_thru: parThru,
+      score_to_par: ranked.team_raw - parThru,
+      holes_thru: ranked.holes_thru,
+      rank_in_pool: ranked.rank_in_pool,
+      points: ranked.points,
+      projected: ranked.projected,
+    };
+  });
+  const ranked = rankByScoreToPar(rows);
+  return ranked.map(({ rank, ...rest }) => ({ ...rest, rank_overall: rank }));
+}
+
+export function computeDay3EntryLeaderboard(): Day3EntryDisplayRow[] {
+  const s = snapshot();
+  const day3 = s.rounds.find((r) => r.day === 3);
+  if (!day3) return [];
+  const teams = new Map(s.teams.map((t) => [t.id, t]));
+  const players = new Map(s.players.map((p) => [p.id, p]));
+  const standings = computeDay3StandingRows();
+  return standings
+    .map((r): Day3EntryDisplayRow => {
+      const team = teams.get(r.team_id)!;
+      const partIds = s.participants
+        .filter((p) => p.scramble_entry_id === r.entry_id)
+        .map((p) => p.player_id);
+      const partNames = partIds
+        .map((id) => players.get(id)?.name)
+        .filter((n): n is string => !!n)
+        .sort();
+      return {
+        entry_id: r.entry_id,
+        team_id: r.team_id,
+        team_name: team.name,
+        display_color: team.display_color,
+        participant_names: partNames,
+        team_raw: r.team_raw,
+        par_thru: r.par_thru,
+        score_to_par: r.team_raw - r.par_thru,
+        holes_thru: r.holes_thru,
+        rank: r.rank,
+        placement_points: r.placement_points,
+        bonus_points: r.bonus_points,
+        total_points: r.total_points,
+        projected: r.projected,
+      };
+    })
+    .sort((a, b) => {
+      const aStarted = a.holes_thru > 0;
+      const bStarted = b.holes_thru > 0;
+      if (aStarted && !bStarted) return -1;
+      if (!aStarted && bStarted) return 1;
+      if (aStarted && bStarted) return a.score_to_par - b.score_to_par;
+      return a.team_name.localeCompare(b.team_name);
+    });
 }
 
 export function computeLeaderboard(): LeaderboardRow[] {
