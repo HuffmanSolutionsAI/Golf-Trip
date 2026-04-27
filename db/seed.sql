@@ -87,19 +87,19 @@ INSERT OR IGNORE INTO holes (id, round_id, hole_number, par, handicap_index) VAL
   ('h3-17','round-3',17, 5,  4),  ('h3-18','round-3',18, 4, 12);
 
 -- ------------------------------------------------------------------
--- Matches — Day 1 singles (stroke alloc from §10.7 of the build brief)
+-- Matches — Day 1 singles (stroke alloc: round(hcp), gap = diff, 0 if gap≤1, cap 11)
 -- ------------------------------------------------------------------
 INSERT OR IGNORE INTO matches (id, round_id, match_number, player1_id, player2_id, stroke_giver_id, strokes_given) VALUES
-  ('m-01','round-1', 1, 'p-reid',    'p-pincus',  'p-pincus',  4),
-  ('m-02','round-1', 2, 'p-tom',     'p-ham',     'p-tom',     7),
-  ('m-03','round-1', 3, 'p-luke',    'p-bands',   NULL,        0),
-  ('m-04','round-1', 4, 'p-bot',     'p-bennett', 'p-bot',    11),
-  ('m-05','round-1', 5, 'p-foley',   'p-davis',   NULL,        0),
-  ('m-06','round-1', 6, 'p-byrnes',  'p-mcardle', NULL,        0),
-  ('m-07','round-1', 7, 'p-matkins', 'p-cota',    'p-matkins', 5),
-  ('m-08','round-1', 8, 'p-mallen',  'p-mason',   NULL,        0),
-  ('m-09','round-1', 9, 'p-ric',     'p-mellis',  NULL,        0),
-  ('m-10','round-1',10, 'p-nate',    'p-keller',  NULL,        0);
+  ('m-01','round-1', 1, 'p-reid',    'p-ham',     'p-ham',      3),
+  ('m-02','round-1', 2, 'p-pincus',  'p-nate',    NULL,         0),
+  ('m-03','round-1', 3, 'p-keller',  'p-mcardle', 'p-mcardle',  3),
+  ('m-04','round-1', 4, 'p-mellis',  'p-ric',     NULL,         0),
+  ('m-05','round-1', 5, 'p-byrnes',  'p-tom',     NULL,         0),
+  ('m-06','round-1', 6, 'p-foley',   'p-bands',   NULL,         0),
+  ('m-07','round-1', 7, 'p-luke',    'p-davis',   NULL,         0),
+  ('m-08','round-1', 8, 'p-cota',    'p-mason',   NULL,         0),
+  ('m-09','round-1', 9, 'p-mallen',  'p-bennett', 'p-bennett',  3),
+  ('m-10','round-1',10, 'p-matkins', 'p-bot',     'p-bot',     10);
 
 -- ------------------------------------------------------------------
 -- Scramble entries — Day 2 (AD and BC pools)
