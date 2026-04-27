@@ -15,24 +15,24 @@ INSERT OR IGNORE INTO teams (id, name, display_color, sort_order) VALUES
 -- Players
 -- ------------------------------------------------------------------
 INSERT OR IGNORE INTO players (id, name, handicap, team_id, team_slot, is_admin) VALUES
-  ('p-reid',    'Reid',     2.9, 'team-1', 'A', 1),
-  ('p-tom',     'Tom',     12.9, 'team-1', 'B', 0),
-  ('p-luke',    'Luke',    14.9, 'team-1', 'C', 0),
+  ('p-reid',    'Reid',     3.3, 'team-1', 'A', 1),
+  ('p-tom',     'Tom',     13.0, 'team-1', 'B', 0),
+  ('p-foley',   'Foley',   15.0, 'team-1', 'C', 0),
   ('p-bot',     'Bot',     34.9, 'team-1', 'D', 0),
-  ('p-pincus',  'Pincus',   6.7, 'team-2', 'A', 0),
+  ('p-ham',     'Ham',      6.1, 'team-2', 'A', 0),
   ('p-byrnes',  'Byrnes',  12.1, 'team-2', 'B', 0),
-  ('p-foley',   'Foley',   15.0, 'team-2', 'C', 0),
-  ('p-matkins', 'Matkins', 23.6, 'team-2', 'D', 0),
-  ('p-ham',     'Ham',      7.3, 'team-3', 'A', 0),
+  ('p-bands',   'Bands',   15.2, 'team-2', 'C', 0),
+  ('p-matkins', 'Matkins', 24.6, 'team-2', 'D', 0),
+  ('p-pincus',  'Pincus',   6.8, 'team-3', 'A', 0),
   ('p-ric',     'Ric',     11.0, 'team-3', 'B', 0),
-  ('p-davis',   'Davis',   15.2, 'team-3', 'C', 0),
-  ('p-mallen',  'Mallen',  23.0, 'team-3', 'D', 0),
+  ('p-luke',    'Luke',    15.3, 'team-3', 'C', 0),
+  ('p-mason',   'Mason',   21.4, 'team-3', 'D', 0),
   ('p-nate',    'Nate',     7.4, 'team-4', 'A', 0),
   ('p-mcardle', 'McArdle', 10.8, 'team-4', 'B', 0),
-  ('p-bands',   'Bands',   15.2, 'team-4', 'C', 0),
-  ('p-mason',   'Mason',   21.3, 'team-4', 'D', 0),
+  ('p-davis',   'Davis',   15.6, 'team-4', 'C', 0),
+  ('p-mallen',  'Mallen',  20.1, 'team-4', 'D', 0),
   ('p-keller',  'Keller',   7.6, 'team-5', 'A', 0),
-  ('p-mellis',  'Mellis',   9.0, 'team-5', 'B', 0),
+  ('p-mellis',  'Mellis',  10.5, 'team-5', 'B', 0),
   ('p-bennett', 'Bennett', 19.8, 'team-5', 'C', 0),
   ('p-cota',    'Cota',    20.0, 'team-5', 'D', 0);
 
@@ -91,14 +91,14 @@ INSERT OR IGNORE INTO holes (id, round_id, hole_number, par, handicap_index) VAL
 -- ------------------------------------------------------------------
 INSERT OR IGNORE INTO matches (id, round_id, match_number, player1_id, player2_id, stroke_giver_id, strokes_given) VALUES
   ('m-01','round-1', 1, 'p-reid',    'p-pincus',  'p-pincus',  4),
-  ('m-02','round-1', 2, 'p-tom',     'p-ham',     'p-tom',     6),
+  ('m-02','round-1', 2, 'p-tom',     'p-ham',     'p-tom',     7),
   ('m-03','round-1', 3, 'p-luke',    'p-bands',   NULL,        0),
   ('m-04','round-1', 4, 'p-bot',     'p-bennett', 'p-bot',    11),
   ('m-05','round-1', 5, 'p-foley',   'p-davis',   NULL,        0),
   ('m-06','round-1', 6, 'p-byrnes',  'p-mcardle', NULL,        0),
-  ('m-07','round-1', 7, 'p-matkins', 'p-cota',    'p-matkins', 4),
-  ('m-08','round-1', 8, 'p-mallen',  'p-mason',   'p-mallen',  2),
-  ('m-09','round-1', 9, 'p-ric',     'p-mellis',  'p-ric',     2),
+  ('m-07','round-1', 7, 'p-matkins', 'p-cota',    'p-matkins', 5),
+  ('m-08','round-1', 8, 'p-mallen',  'p-mason',   NULL,        0),
+  ('m-09','round-1', 9, 'p-ric',     'p-mellis',  NULL,        0),
   ('m-10','round-1',10, 'p-nate',    'p-keller',  NULL,        0);
 
 -- ------------------------------------------------------------------
@@ -113,13 +113,13 @@ INSERT OR IGNORE INTO scramble_entries (id, round_id, team_id, pool) VALUES
 
 INSERT OR IGNORE INTO scramble_participants (scramble_entry_id, player_id) VALUES
   ('s2-t1-ad','p-reid'),    ('s2-t1-ad','p-bot'),
-  ('s2-t1-bc','p-tom'),     ('s2-t1-bc','p-luke'),
-  ('s2-t2-ad','p-pincus'),  ('s2-t2-ad','p-matkins'),
-  ('s2-t2-bc','p-byrnes'),  ('s2-t2-bc','p-foley'),
-  ('s2-t3-ad','p-ham'),     ('s2-t3-ad','p-mallen'),
-  ('s2-t3-bc','p-ric'),     ('s2-t3-bc','p-davis'),
-  ('s2-t4-ad','p-nate'),    ('s2-t4-ad','p-mason'),
-  ('s2-t4-bc','p-mcardle'), ('s2-t4-bc','p-bands'),
+  ('s2-t1-bc','p-tom'),     ('s2-t1-bc','p-foley'),
+  ('s2-t2-ad','p-ham'),     ('s2-t2-ad','p-matkins'),
+  ('s2-t2-bc','p-byrnes'),  ('s2-t2-bc','p-bands'),
+  ('s2-t3-ad','p-pincus'),  ('s2-t3-ad','p-mason'),
+  ('s2-t3-bc','p-ric'),     ('s2-t3-bc','p-luke'),
+  ('s2-t4-ad','p-nate'),    ('s2-t4-ad','p-mallen'),
+  ('s2-t4-bc','p-mcardle'), ('s2-t4-bc','p-davis'),
   ('s2-t5-ad','p-keller'),  ('s2-t5-ad','p-cota'),
   ('s2-t5-bc','p-mellis'),  ('s2-t5-bc','p-bennett');
 
@@ -134,8 +134,8 @@ INSERT OR IGNORE INTO scramble_entries (id, round_id, team_id, pool) VALUES
   ('s3-t5','round-3','team-5',NULL);
 
 INSERT OR IGNORE INTO scramble_participants (scramble_entry_id, player_id) VALUES
-  ('s3-t1','p-reid'),    ('s3-t1','p-tom'),     ('s3-t1','p-luke'),    ('s3-t1','p-bot'),
-  ('s3-t2','p-pincus'),  ('s3-t2','p-byrnes'),  ('s3-t2','p-foley'),   ('s3-t2','p-matkins'),
-  ('s3-t3','p-ham'),     ('s3-t3','p-ric'),     ('s3-t3','p-davis'),   ('s3-t3','p-mallen'),
-  ('s3-t4','p-nate'),    ('s3-t4','p-mcardle'), ('s3-t4','p-bands'),   ('s3-t4','p-mason'),
+  ('s3-t1','p-reid'),    ('s3-t1','p-tom'),     ('s3-t1','p-foley'),   ('s3-t1','p-bot'),
+  ('s3-t2','p-ham'),     ('s3-t2','p-byrnes'),  ('s3-t2','p-bands'),   ('s3-t2','p-matkins'),
+  ('s3-t3','p-pincus'),  ('s3-t3','p-ric'),     ('s3-t3','p-luke'),    ('s3-t3','p-mason'),
+  ('s3-t4','p-nate'),    ('s3-t4','p-mcardle'), ('s3-t4','p-davis'),   ('s3-t4','p-mallen'),
   ('s3-t5','p-keller'),  ('s3-t5','p-mellis'),  ('s3-t5','p-bennett'), ('s3-t5','p-cota');
