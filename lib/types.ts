@@ -1,4 +1,4 @@
-// Shared TS types mirroring the DB schema.
+// Shared TS types mirroring the SQLite schema.
 
 export type TeamRow = {
   id: string;
@@ -15,8 +15,7 @@ export type PlayerRow = {
   handicap: number;
   team_id: string;
   team_slot: "A" | "B" | "C" | "D";
-  user_id: string | null;
-  is_admin: boolean;
+  is_admin: number; // SQLite boolean = 0/1
   created_at: string;
   updated_at: string;
 };
@@ -29,7 +28,7 @@ export type RoundRow = {
   total_par: number;
   format: "singles" | "scramble_2man" | "scramble_4man";
   tee_time: string;
-  is_locked: boolean;
+  is_locked: number;
   created_at: string;
   updated_at: string;
 };
@@ -85,7 +84,6 @@ export type HoleScoreRow = {
 
 export type ChatMessageRow = {
   id: string;
-  user_id: string | null;
   player_id: string | null;
   body: string;
   kind: "human" | "system";
@@ -94,16 +92,23 @@ export type ChatMessageRow = {
 
 export type AuditLogRow = {
   id: string;
-  user_id: string | null;
+  player_id: string | null;
   action: string;
   entity_type: string | null;
   entity_id: string | null;
-  before_value: unknown;
-  after_value: unknown;
+  before_value: string | null;
+  after_value: string | null;
   occurred_at: string;
 };
 
-// View shapes
+export type SessionRow = {
+  id: string;
+  player_id: string;
+  created_at: string;
+  expires_at: string;
+};
+
+// ---- Derived (TS-computed) shapes ----
 
 export type LeaderboardRow = {
   team_id: string;
@@ -163,6 +168,64 @@ export type Day3StandingsRow = {
   holes_thru: number;
   par_thru: number;
   under_par: number;
+  rank: number;
+  placement_points: number;
+  bonus_points: number;
+  total_points: number;
+  projected: boolean;
+};
+
+// Tournament-style daily leaderboard rows (server-computed for the leaderboard page).
+
+export type Day1IndividualRow = {
+  player_id: string;
+  player_name: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  team_slot: "A" | "B" | "C" | "D";
+  handicap: number;
+  match_id: string;
+  match_number: number;
+  opponent_id: string;
+  opponent_name: string;
+  gross_total: number;
+  par_thru: number;
+  score_to_par: number;
+  holes_thru: number;
+  match_status: "pending" | "in_progress" | "final";
+  current_holes_up: number; // signed from this player's perspective
+  is_winner: boolean | null;
+  rank: number;
+};
+
+export type Day2EntryDisplayRow = {
+  entry_id: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  pool: "AD" | "BC";
+  participant_names: string[];
+  team_raw: number;
+  par_thru: number;
+  score_to_par: number;
+  holes_thru: number;
+  rank_in_pool: number;
+  rank_overall: number;
+  points: number;
+  projected: boolean;
+};
+
+export type Day3EntryDisplayRow = {
+  entry_id: string;
+  team_id: string;
+  team_name: string;
+  display_color: string;
+  participant_names: string[];
+  team_raw: number;
+  par_thru: number;
+  score_to_par: number;
+  holes_thru: number;
   rank: number;
   placement_points: number;
   bonus_points: number;

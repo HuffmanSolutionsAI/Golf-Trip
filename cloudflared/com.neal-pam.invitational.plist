@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd plist to auto-start the Next.js app on the Mac mini at login / boot.
+  Install with:
+    cp cloudflared/com.neal-pam.invitational.plist ~/Library/LaunchAgents/
+    # Edit the two paths below to match your actual install dir first.
+    launchctl load  ~/Library/LaunchAgents/com.neal-pam.invitational.plist
+    launchctl start com.neal-pam.invitational
+
+  Logs: ~/Library/Logs/np-invitational.{out,err}.log
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.neal-pam.invitational</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>/Users/YOU/Golf-Trip/scripts/start.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOU/Golf-Trip</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOU/Library/Logs/np-invitational.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/YOU/Library/Logs/np-invitational.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>

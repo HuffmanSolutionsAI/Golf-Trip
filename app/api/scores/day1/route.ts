@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createServerSupabase, createAdminSupabase } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/server/requireAdmin";
+import { getMatch, upsertPlayerScore } from "@/lib/repo/scores";
+import { getDb } from "@/lib/db";
+import { emitChange } from "@/lib/events";
+import { recordAudit } from "@/lib/repo/audit";
 import {
   postIfEagleOrBetter,
   postIfLeaderChanged,
@@ -10,92 +14,71 @@ import {
 import type { HoleRow, PlayerRow, RoundRow } from "@/lib/types";
 
 const Body = z.object({
-  matchId: z.string().uuid(),
-  playerId: z.string().uuid(),
+  matchId: z.string().min(1),
+  playerId: z.string().min(1),
   holeNumber: z.number().int().min(1).max(18),
   strokes: z.number().int().min(1).max(15),
 });
 
 export async function POST(req: Request) {
-  const supabase = await createServerSupabase();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) {
-    return NextResponse.json({ error: "Not signed in." }, { status: 401 });
-  }
+  const gate = await requireSession();
+  if (!gate.ok) return gate.response;
 
-  const json = await req.json().catch(() => null);
-  const parsed = Body.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-  }
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
 
   const { matchId, playerId, holeNumber, strokes } = parsed.data;
 
-  // Verify match, load round for round_id.
-  const { data: match, error: mErr } = await supabase
-    .from("matches")
-    .select("id, round_id, player1_id, player2_id")
-    .eq("id", matchId)
-    .maybeSingle();
-  if (mErr || !match) return NextResponse.json({ error: "Match not found." }, { status: 404 });
+  const match = getMatch(matchId);
+  if (!match) return NextResponse.json({ error: "Match not found." }, { status: 404 });
   if (playerId !== match.player1_id && playerId !== match.player2_id) {
     return NextResponse.json({ error: "Player not in match." }, { status: 400 });
   }
 
-  // Upsert through RLS — caller must be the target player or admin.
-  const { data: existing } = await supabase
-    .from("hole_scores")
-    .select("id")
-    .eq("round_id", match.round_id)
-    .eq("player_id", playerId)
-    .eq("hole_number", holeNumber)
-    .maybeSingle();
-
-  let opErr: string | null = null;
-  if (existing) {
-    const { error } = await supabase
-      .from("hole_scores")
-      .update({ strokes, entered_by: auth.user.id, entered_at: new Date().toISOString() })
-      .eq("id", existing.id);
-    opErr = error?.message ?? null;
-  } else {
-    const { error } = await supabase.from("hole_scores").insert({
-      round_id: match.round_id,
-      player_id: playerId,
-      hole_number: holeNumber,
-      strokes,
-      entered_by: auth.user.id,
-    });
-    opErr = error?.message ?? null;
+  // Permissions: either player in the match, or admin.
+  const db = getDb();
+  if (
+    !gate.isAdmin &&
+    gate.playerId !== match.player1_id &&
+    gate.playerId !== match.player2_id
+  ) {
+    return NextResponse.json({ error: "Not a participant." }, { status: 403 });
   }
-  if (opErr) return NextResponse.json({ error: opErr }, { status: 403 });
 
-  // Side effects (service role so they always run).
-  const admin = createAdminSupabase();
-  const [{ data: hole }, { data: player }, { data: round }, { data: score }] =
-    await Promise.all([
-      admin
-        .from("holes")
-        .select("*")
-        .eq("round_id", match.round_id)
-        .eq("hole_number", holeNumber)
-        .maybeSingle(),
-      admin.from("players").select("*").eq("id", playerId).maybeSingle(),
-      admin.from("rounds").select("*").eq("id", match.round_id).maybeSingle(),
-      admin
-        .from("hole_scores")
-        .select("*")
-        .eq("round_id", match.round_id)
-        .eq("player_id", playerId)
-        .eq("hole_number", holeNumber)
-        .maybeSingle(),
-    ]);
-  if (hole && player && round && score) {
-    await postIfEagleOrBetter(admin, score, hole as HoleRow, player as PlayerRow, round as RoundRow);
+  const round = db.prepare("SELECT * FROM rounds WHERE id = ?").get(match.round_id) as RoundRow | undefined;
+  if (!round) return NextResponse.json({ error: "Round not found." }, { status: 404 });
+  if (round.is_locked && !gate.isAdmin) {
+    return NextResponse.json({ error: "Round is locked." }, { status: 403 });
   }
-  await postIfMatchJustWentFinal(admin, matchId);
-  await postIfLeaderChanged(admin);
-  await postTeeTimeAlertIfDue(admin);
 
-  return NextResponse.json({ ok: true });
+  const { inserted, scoreId } = upsertPlayerScore({
+    roundId: match.round_id,
+    playerId,
+    holeNumber,
+    strokes,
+    enteredBy: gate.playerId,
+  });
+
+  recordAudit({
+    playerId: gate.playerId,
+    action: inserted ? "score.insert" : "score.update",
+    entityType: "hole_score",
+    entityId: scoreId,
+    after: { roundId: match.round_id, playerId, holeNumber, strokes },
+  });
+
+  emitChange("hole_scores");
+
+  // Side effects.
+  const hole = db
+    .prepare("SELECT * FROM holes WHERE round_id = ? AND hole_number = ?")
+    .get(match.round_id, holeNumber) as HoleRow | undefined;
+  const player = db.prepare("SELECT * FROM players WHERE id = ?").get(playerId) as PlayerRow | undefined;
+  if (hole && player) postIfEagleOrBetter(strokes, hole, player, round);
+  postIfMatchJustWentFinal(matchId);
+  postIfLeaderChanged();
+  postTeeTimeAlertIfDue();
+  emitChange("chat_messages");
+
+  return NextResponse.json({ ok: true, scoreId });
 }

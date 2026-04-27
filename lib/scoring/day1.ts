@@ -66,7 +66,7 @@ export function computeDay1MatchResult(
       ? "pending"
       : "in_progress";
 
-  const strokesTaken = match.strokeHoles.length; // may be < strokesGiven while Holly's hdcp index is pending
+  const strokesTaken = match.strokeHoles.length; // may be < strokesGiven while Magnolia's hdcp index is pending
   const p1TotalNet = match.strokeGiverId === match.p1Id ? p1Gross - strokesTaken : p1Gross;
   const p2TotalNet = match.strokeGiverId === match.p2Id ? p2Gross - strokesTaken : p2Gross;
 

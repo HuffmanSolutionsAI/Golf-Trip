@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { listRounds } from "@/lib/repo/rounds";
 import { formatRoundDate, formatTeeTime } from "@/lib/utils";
-import type { RoundRow } from "@/lib/types";
 import { Card, CardContent, CardEyebrow } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +11,8 @@ const FORMAT_LABEL: Record<string, string> = {
   scramble_4man: "4-man scramble · Placement + under par",
 };
 
-export default async function SchedulePage() {
-  const supabase = await createServerSupabase();
-  const { data } = await supabase.from("rounds").select("*").order("day");
-  const rounds = (data ?? []) as RoundRow[];
+export default function SchedulePage() {
+  const rounds = listRounds();
   const now = new Date();
 
   return (
@@ -25,12 +22,8 @@ export default async function SchedulePage() {
         <h1 className="font-display text-3xl text-[var(--color-navy)]">Three rounds</h1>
       </div>
       {rounds.map((r) => {
-        const start = new Date(r.date + "T" + r.tee_time);
-        const status: "UPCOMING" | "LIVE" | "FINAL" = r.is_locked
-          ? "FINAL"
-          : start > now
-            ? "UPCOMING"
-            : "LIVE";
+        const start = new Date(`${r.date}T${r.tee_time}`);
+        const status = r.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";
         return (
           <Card key={r.id}>
             <CardContent className="space-y-3">
@@ -46,14 +39,13 @@ export default async function SchedulePage() {
                     {FORMAT_LABEL[r.format]} · par {r.total_par}
                   </div>
                 </div>
-                <StatusChip status={status} />
+                <StatusChip status={status as "UPCOMING" | "LIVE" | "FINAL"} />
               </div>
               <Link
                 href={`/day${r.day}` as never}
                 className="inline-block text-xs uppercase tracking-widest font-ui text-[var(--color-gold)]"
               >
-                {r.day === 1 ? "View matches" : r.day === 2 ? "View pools" : "View teams"}{" "}
-                →
+                {r.day === 1 ? "View matches" : r.day === 2 ? "View pools" : "View teams"} →
               </Link>
             </CardContent>
           </Card>

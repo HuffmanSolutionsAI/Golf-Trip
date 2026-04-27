@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useLiveRefresh } from "@/lib/client/useLiveRefresh";
 import { HoleEntrySheet } from "@/components/scoring/HoleEntrySheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardEyebrow } from "@/components/ui/card";
@@ -41,20 +41,7 @@ export function ScrambleScorecard(props: Props) {
     initial: number | null;
   } | null>(null);
 
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`scramble-${props.entryId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "hole_scores", filter: `round_id=eq.${props.round.id}` },
-        () => router.refresh(),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [props.entryId, props.round.id, router]);
+  useLiveRefresh(["hole_scores", "scramble_entries"]);
 
   useEffect(() => setScores(props.initialScores), [props.initialScores]);
 

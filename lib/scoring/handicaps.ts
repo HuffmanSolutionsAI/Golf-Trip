@@ -29,7 +29,7 @@ export function computeStrokeAllocation(
 
   const withIndex = holes.filter((h) => h.handicap_index !== null);
   if (withIndex.length < strokesGiven) {
-    // Pending hdcp index data (e.g. Holly pre-fill). Commissioner re-seeds later.
+    // Pending hdcp index data (e.g. Magnolia pre-fill). Commissioner re-seeds later.
     return { strokeGiverId, strokesGiven, strokeHoles: [] };
   }
   const sorted = [...withIndex].sort(

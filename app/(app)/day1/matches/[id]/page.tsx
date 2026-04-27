@@ -1,16 +1,13 @@
-import { createServerSupabase } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { getCurrentPlayer } from "@/lib/server/currentPlayer";
+import { getCurrentPlayer } from "@/lib/session";
+import {
+  getMatch,
+  listScoresForPlayerOnRound,
+} from "@/lib/repo/scores";
+import { getRound, listHoles } from "@/lib/repo/rounds";
+import { getPlayerWithTeam } from "@/lib/repo/players";
+import { getDay1MatchState } from "@/lib/repo/standings";
 import { MatchScorecard } from "./MatchScorecard";
-import type {
-  Day1MatchStateRow,
-  HoleRow,
-  HoleScoreRow,
-  MatchRow,
-  PlayerRow,
-  RoundRow,
-  TeamRow,
-} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,51 +17,32 @@ export default async function Day1MatchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createServerSupabase();
   const me = await getCurrentPlayer();
-
-  const { data: match } = await supabase
-    .from("matches")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const match = getMatch(id);
   if (!match) notFound();
 
-  const m = match as MatchRow;
-
-  const [{ data: round }, { data: holes }, { data: state }, { data: p1 }, { data: p2 }, { data: scores }] =
-    await Promise.all([
-      supabase.from("rounds").select("*").eq("id", m.round_id).single(),
-      supabase
-        .from("holes")
-        .select("*")
-        .eq("round_id", m.round_id)
-        .order("hole_number"),
-      supabase
-        .from("v_day1_match_state")
-        .select("*")
-        .eq("match_id", id)
-        .maybeSingle(),
-      supabase.from("players").select("*, team:teams(*)").eq("id", m.player1_id).single(),
-      supabase.from("players").select("*, team:teams(*)").eq("id", m.player2_id).single(),
-      supabase
-        .from("hole_scores")
-        .select("*")
-        .eq("round_id", m.round_id)
-        .in("player_id", [m.player1_id, m.player2_id]),
-    ]);
+  const round = getRound(match.round_id);
+  if (!round) notFound();
+  const holes = listHoles(match.round_id);
+  const state = getDay1MatchState(id);
+  const p1 = getPlayerWithTeam(match.player1_id)!;
+  const p2 = getPlayerWithTeam(match.player2_id)!;
+  const scores = [
+    ...listScoresForPlayerOnRound(match.player1_id, match.round_id),
+    ...listScoresForPlayerOnRound(match.player2_id, match.round_id),
+  ];
 
   return (
     <MatchScorecard
-      match={m}
-      round={round as RoundRow}
-      holes={(holes ?? []) as HoleRow[]}
-      state={(state ?? null) as Day1MatchStateRow | null}
-      player1={p1 as PlayerRow & { team: TeamRow }}
-      player2={p2 as PlayerRow & { team: TeamRow }}
-      initialScores={(scores ?? []) as HoleScoreRow[]}
+      match={match}
+      round={round}
+      holes={holes}
+      state={state}
+      player1={p1}
+      player2={p2}
+      initialScores={scores}
       myId={me?.id ?? null}
-      isAdmin={me?.is_admin ?? false}
+      isAdmin={!!me?.is_admin}
     />
   );
 }

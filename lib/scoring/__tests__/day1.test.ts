@@ -115,7 +115,7 @@ describe("computeDay1MatchResult — strokes applied", () => {
   });
 });
 
-describe("computeDay1MatchResult — pending stroke allocation (Holly)", () => {
+describe("computeDay1MatchResult — pending stroke allocation (Magnolia)", () => {
   it("no stroke holes but strokesGiven known: net calc uses 0 strokes deducted", () => {
     const match: Day1MatchInput = {
       p1Id: "a",

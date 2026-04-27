@@ -71,15 +71,15 @@ describe("computeStrokeAllocation — within-1 rule", () => {
     expect(r.strokeHoles).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
-  it("returns empty strokeHoles when handicap_index data is missing (Holly pre-fill)", () => {
-    const hollyHoles = Array.from({ length: 18 }, (_, i) => ({
+  it("returns empty strokeHoles when handicap_index data is missing (Magnolia pre-fill)", () => {
+    const magnoliaHoles = Array.from({ length: 18 }, (_, i) => ({
       hole_number: i + 1,
       handicap_index: null,
     }));
     const r = computeStrokeAllocation(
       { id: "a", handicap: 3 },
       { id: "b", handicap: 10 },
-      hollyHoles,
+      magnoliaHoles,
     );
     // Strokes are known (7) but can't be allocated yet.
     expect(r.strokeGiverId).toBe("b");

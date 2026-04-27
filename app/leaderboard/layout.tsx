@@ -1,8 +1,10 @@
-import { getCurrentPlayer } from "@/lib/server/currentPlayer";
+import Link from "next/link";
+import { getCurrentPlayer } from "@/lib/session";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomTabBar } from "@/components/layout/BottomTabBar";
 import { Sidebar } from "@/components/layout/Sidebar";
-import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 
 export default async function LeaderboardLayout({
   children,
@@ -28,9 +30,13 @@ export default async function LeaderboardLayout({
 
   return (
     <div className="min-h-[100dvh] bg-[var(--color-paper)] flex flex-col">
-      <TopNav playerName={player.name} teamName={player.team?.name} isAdmin={player.is_admin} />
+      <TopNav
+        playerName={player.name}
+        teamName={player.team?.name}
+        isAdmin={!!player.is_admin}
+      />
       <div className="flex-1 flex">
-        <Sidebar isAdmin={player.is_admin} />
+        <Sidebar isAdmin={!!player.is_admin} />
         <main className="flex-1 pb-16 md:pb-4">{children}</main>
       </div>
       <BottomTabBar />

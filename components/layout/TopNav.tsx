@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "@/components/brand/Badge";
 import { WordmarkInline } from "@/components/brand/Wordmark";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ChevronDown, LogOut, User } from "lucide-react";
 
@@ -21,8 +20,7 @@ export function TopNav({
   const router = useRouter();
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch("/api/session/logout", { method: "POST" });
     router.push("/");
     router.refresh();
   }
@@ -32,7 +30,9 @@ export function TopNav({
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
         <Link href="/home" className="flex items-center gap-3 shrink-0">
           <Badge size={40} variant="dark" />
-          <span className="hidden sm:inline"><WordmarkInline /></span>
+          <span className="hidden sm:inline">
+            <WordmarkInline />
+          </span>
         </Link>
         {playerName && (
           <div className="relative">
@@ -48,9 +48,13 @@ export function TopNav({
               <div className="absolute right-0 mt-2 w-56 rounded-md bg-[var(--color-cream)] text-[var(--color-ink)] shadow-lg border border-[var(--color-rule)] z-50">
                 <div className="px-4 py-3 border-b border-[var(--color-rule)]">
                   <div className="text-sm font-semibold">{playerName}</div>
-                  {teamName && <div className="text-xs text-neutral-600">{teamName}</div>}
+                  {teamName && (
+                    <div className="text-xs text-neutral-600">{teamName}</div>
+                  )}
                   {isAdmin && (
-                    <div className="mt-1 text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-semibold">Commissioner</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-widest text-[var(--color-gold)] font-semibold">
+                      Commissioner
+                    </div>
                   )}
                 </div>
                 <button

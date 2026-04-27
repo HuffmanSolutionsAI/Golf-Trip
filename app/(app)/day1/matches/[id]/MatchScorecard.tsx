@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { useLiveRefresh } from "@/lib/client/useLiveRefresh";
 import { HoleEntrySheet } from "@/components/scoring/HoleEntrySheet";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardEyebrow } from "@/components/ui/card";
@@ -44,26 +44,7 @@ export function MatchScorecard(props: Props) {
     notes: string[];
   } | null>(null);
 
-  // Realtime — subscribe to this match's two players.
-  useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel(`match-${props.match.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "hole_scores",
-          filter: `round_id=eq.${props.round.id}`,
-        },
-        () => router.refresh(),
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [props.match.id, props.round.id, router]);
+  useLiveRefresh(["hole_scores", "matches"]);
 
   useEffect(() => setScores(props.initialScores), [props.initialScores]);
 

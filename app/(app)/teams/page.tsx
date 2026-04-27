@@ -1,18 +1,14 @@
 import Link from "next/link";
-import { createServerSupabase } from "@/lib/supabase/server";
-import type { LeaderboardRow, PlayerRow } from "@/lib/types";
+import { listPlayers } from "@/lib/repo/players";
+import { computeLeaderboard } from "@/lib/repo/standings";
 import { Card, CardContent } from "@/components/ui/card";
+import type { PlayerRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeamsIndexPage() {
-  const supabase = await createServerSupabase();
-  const [{ data: lbData }, { data: playersData }] = await Promise.all([
-    supabase.from("v_leaderboard").select("*").order("sort_order"),
-    supabase.from("players").select("*").order("team_slot"),
-  ]);
-  const lb = (lbData ?? []) as LeaderboardRow[];
-  const players = (playersData ?? []) as PlayerRow[];
+export default function TeamsIndexPage() {
+  const lb = computeLeaderboard().sort((a, b) => a.sort_order - b.sort_order);
+  const players = listPlayers();
   const byTeam = new Map<string, PlayerRow[]>();
   players.forEach((p) => {
     if (!byTeam.has(p.team_id)) byTeam.set(p.team_id, []);
@@ -42,19 +38,20 @@ export default async function TeamsIndexPage() {
                       {team.name}
                     </div>
                     <div className="font-mono text-lg tabular-nums">
-                      {team.total_points} <span className="text-xs text-neutral-500">pts</span>
+                      {team.total_points}{" "}
+                      <span className="text-xs text-neutral-500">pts</span>
                     </div>
                   </div>
                   <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                     {members.map((p) => (
                       <li key={p.id} className="flex items-center gap-2">
-                        <span
-                          className="inline-block w-4 h-4 rounded-full bg-[var(--color-navy)] text-[var(--color-cream)] text-[10px] font-ui font-semibold flex items-center justify-center"
-                        >
+                        <span className="inline-block w-4 h-4 rounded-full bg-[var(--color-navy)] text-[var(--color-cream)] text-[10px] font-ui font-semibold flex items-center justify-center">
                           {p.name[0]}
                         </span>
                         <span>{p.name}</span>
-                        <span className="text-xs text-neutral-500 ml-auto">{p.handicap}</span>
+                        <span className="text-xs text-neutral-500 ml-auto">
+                          {p.handicap}
+                        </span>
                       </li>
                     ))}
                   </ul>

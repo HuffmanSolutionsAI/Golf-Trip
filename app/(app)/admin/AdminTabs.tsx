@@ -106,7 +106,7 @@ function PlayersTab({
                 <th className="py-1.5 px-2 text-left text-xs font-ui">Team</th>
                 <th className="py-1.5 px-2 text-left text-xs font-ui">Slot</th>
                 <th className="py-1.5 px-2 text-left text-xs font-ui">Handicap</th>
-                <th className="py-1.5 px-2 text-left text-xs font-ui">Claimed</th>
+                <th className="py-1.5 px-2 text-left text-xs font-ui">Admin</th>
               </tr>
             </thead>
             <tbody>
@@ -139,7 +139,7 @@ function PlayersTab({
                     </div>
                   </td>
                   <td className="px-2 py-1.5 text-xs text-neutral-600">
-                    {p.user_id ? "✓" : "—"}
+                    {p.is_admin ? "✓" : "—"}
                   </td>
                 </tr>
               ))}

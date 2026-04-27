@@ -1,30 +1,19 @@
-import { createServerSupabase } from "@/lib/supabase/server";
-import { ChatView } from "./ChatView";
-import type { ChatMessageRow, PlayerRow, TeamRow } from "@/lib/types";
+import { listRecentMessages } from "@/lib/repo/chat";
+import { listPlayers, listTeams } from "@/lib/repo/players";
+import { ChatView, type EnrichedMessage } from "./ChatView";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage() {
-  const supabase = await createServerSupabase();
+export default function ChatPage() {
+  const msgs = listRecentMessages(500);
+  const players = new Map(listPlayers().map((p) => [p.id, p]));
+  const teams = new Map(listTeams().map((t) => [t.id, t]));
 
-  const [{ data: msgs }, { data: players }, { data: teams }] = await Promise.all([
-    supabase
-      .from("chat_messages")
-      .select("*")
-      .order("posted_at", { ascending: true })
-      .limit(500),
-    supabase.from("players").select("*"),
-    supabase.from("teams").select("*"),
-  ]);
-
-  const teamById = new Map((teams ?? []).map((t: TeamRow) => [t.id, t]));
-  const playersById = new Map((players ?? []).map((p: PlayerRow) => [p.id, p]));
-
-  const enriched = (msgs ?? []).map((m) => {
-    const player = m.player_id ? playersById.get(m.player_id) : null;
-    const team = player ? teamById.get(player.team_id) : null;
+  const enriched: EnrichedMessage[] = msgs.map((m) => {
+    const player = m.player_id ? players.get(m.player_id) ?? null : null;
+    const team = player ? teams.get(player.team_id) ?? null : null;
     return {
-      ...(m as ChatMessageRow),
+      ...m,
       playerName: player?.name ?? null,
       teamColor: team?.display_color ?? null,
       teamName: team?.name ?? null,

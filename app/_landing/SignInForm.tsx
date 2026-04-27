@@ -1,73 +1,87 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
-export function LandingSignInForm() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle",
-  );
+type PlayerOption = {
+  id: string;
+  name: string;
+  team: string;
+  handicap: number;
+};
+
+export function LandingSignInForm({ players }: { players: PlayerOption[] }) {
+  const router = useRouter();
+  const [playerId, setPlayerId] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [status, setStatus] = useState<"idle" | "signing" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
-    setStatus("sending");
+    if (!playerId) return setError("Pick your name first.");
+    setStatus("signing");
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo:
-          (process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin) +
-          "/auth/callback",
-      },
+    const res = await fetch("/api/session/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerId, passcode }),
     });
-    if (error) {
-      setError(error.message);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
       setStatus("error");
+      setError(body.error ?? "Sign-in failed.");
       return;
     }
-    setStatus("sent");
-  }
-
-  if (status === "sent") {
-    return (
-      <div className="space-y-2">
-        <div className="text-sm font-ui text-[var(--color-gold)] uppercase tracking-[0.2em]">
-          Check your email
-        </div>
-        <p className="font-body-serif italic text-[var(--color-cream)]/70 text-lg">
-          We sent a sign-in link to <span className="not-italic">{email}</span>.
-        </p>
-      </div>
-    );
+    router.push("/home");
+    router.refresh();
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-3 text-left">
-      <Input
-        type="email"
-        required
-        placeholder="you@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="bg-[var(--color-cream)] text-[var(--color-ink)]"
-      />
+      <div>
+        <Label className="text-[var(--color-cream)]">Who are you?</Label>
+        <Select
+          className="bg-[var(--color-cream)] text-[var(--color-ink)]"
+          value={playerId}
+          onChange={(e) => setPlayerId(e.target.value)}
+          required
+        >
+          <option value="">Select your name…</option>
+          {players.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} — {p.team} · HCP {p.handicap}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div>
+        <Label className="text-[var(--color-cream)]">Trip passcode</Label>
+        <Input
+          type="password"
+          required
+          autoComplete="current-password"
+          placeholder="Ask Reid if you forgot"
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          className="bg-[var(--color-cream)] text-[var(--color-ink)]"
+        />
+      </div>
       <Button
         type="submit"
         size="lg"
         variant="primary"
         className="w-full"
-        disabled={status === "sending"}
+        disabled={status === "signing"}
       >
-        {status === "sending" ? "Sending…" : "Sign in with magic link"}
+        {status === "signing" ? "Signing in…" : "Sign in"}
       </Button>
       {error && (
-        <div className="text-xs text-[var(--color-gold-light)]">{error}</div>
+        <div className="text-xs text-[var(--color-gold-light)] text-center">{error}</div>
       )}
     </form>
   );

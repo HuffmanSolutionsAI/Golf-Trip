@@ -9,11 +9,12 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:init": "node --import tsx scripts/init-db.ts",
+    "db:reset": "node --import tsx scripts/reset-db.ts"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.5.2",
-    "@supabase/supabase-js": "^2.45.4",
+    "better-sqlite3": "^11.5.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0-beta.1",
+    "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -35,6 +37,7 @@
     "eslint-config-next": "15.0.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0-beta.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vitest": "^2.1.4"
   },
