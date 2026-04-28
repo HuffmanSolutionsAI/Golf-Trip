@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { listRounds } from "@/lib/repo/rounds";
 import { formatRoundDate, formatTeeTime, toRoman } from "@/lib/utils";
-import { PageHero } from "@/components/layout/PageHero";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +15,49 @@ export default function SchedulePage() {
   const now = new Date();
 
   return (
-    <div className="paper-grain">
-      <PageHero
-        eyebrow="THE SCHEDULE"
-        title="Three rounds"
-        subtitle="Pinehurst · May VII through May IX, MMXXVI."
-      />
+    <div>
+      <div
+        className="paper-grain"
+        style={{ borderBottom: "1px solid var(--color-gold)" }}
+      >
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-12 md:py-16">
+          <div
+            className="font-ui uppercase"
+            style={{
+              fontSize: 11,
+              letterSpacing: "0.32em",
+              color: "var(--color-gold)",
+              fontWeight: 500,
+            }}
+          >
+            THE SCHEDULE
+          </div>
+          <h1
+            className="font-display text-[var(--color-navy)] mt-3"
+            style={{
+              fontSize: 56,
+              lineHeight: 1,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            Three rounds.
+          </h1>
+          <p
+            className="font-body-serif italic mt-4"
+            style={{
+              fontSize: 17,
+              color: "var(--color-stone)",
+              opacity: 0.7,
+              lineHeight: 1.55,
+              maxWidth: 540,
+            }}
+          >
+            Pinehurst · May VII through May IX, MMXXVI.
+          </p>
+        </div>
+      </div>
 
-      <div className="mx-auto max-w-3xl px-4 py-4">
+      <div className="mx-auto max-w-[1100px] px-5 md:px-8 py-6 md:py-10">
         {rounds.map((r) => {
           const start = new Date(`${r.date}T${r.tee_time}`);
           const status = r.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";

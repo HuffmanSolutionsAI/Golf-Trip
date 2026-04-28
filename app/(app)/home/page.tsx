@@ -1,309 +1,432 @@
 import Link from "next/link";
-import { getCurrentPlayer } from "@/lib/session";
-import { formatRoundDate, formatTeeTime, toRoman } from "@/lib/utils";
 import { listRounds } from "@/lib/repo/rounds";
+import { listAllScores } from "@/lib/repo/scores";
 import { computeLeaderboard } from "@/lib/repo/standings";
-import { listRecentMessagesDesc } from "@/lib/repo/chat";
+import { listPlayers } from "@/lib/repo/players";
+import { formatRoundDate, formatTeeTime, toRoman } from "@/lib/utils";
 import type { RoundRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const player = await getCurrentPlayer();
   const rounds = listRounds();
-  const leaderboard = computeLeaderboard();
-  const recentChat = listRecentMessagesDesc(3);
-  const yourTeam = leaderboard.find((r) => r.team_id === player?.team_id);
+  const standings = computeLeaderboard();
+  const scores = listAllScores();
+  const players = listPlayers();
+  const playersByTeam = new Map<string, string[]>();
+  for (const p of players) {
+    const arr = playersByTeam.get(p.team_id) ?? [];
+    arr.push(p.name);
+    playersByTeam.set(p.team_id, arr);
+  }
+
+  // Determine live / next round
   const now = new Date();
+  let liveRound: RoundRow | undefined;
+  let liveThru = 0;
+  for (const r of rounds) {
+    const rs = scores.filter((s) => s.round_id === r.id);
+    if (!r.is_locked && rs.length > 0) {
+      liveRound = r;
+      liveThru = rs.reduce((m, s) => Math.max(m, s.hole_number), 0);
+      break;
+    }
+  }
+  const upcomingRound = !liveRound
+    ? rounds.find((r) => new Date(`${r.date}T${r.tee_time}`) > now)
+    : undefined;
+  const allFinal = !liveRound && !upcomingRound;
+  const heroDay = liveRound?.day ?? upcomingRound?.day ?? rounds[0]?.day ?? 1;
+  const heroCourse = liveRound?.course_name ?? upcomingRound?.course_name ?? rounds[0]?.course_name ?? "";
 
-  const liveRound =
-    rounds.find((r) => {
-      const start = new Date(`${r.date}T${r.tee_time}`);
-      const endOfDay = new Date(start);
-      endOfDay.setHours(23, 59, 59);
-      return !r.is_locked && start <= now && now <= endOfDay;
-    }) ?? null;
-
-  const upcomingRound = rounds.find((r) => new Date(`${r.date}T${r.tee_time}`) > now);
-  const allFinal = rounds.every((r) => !!r.is_locked);
+  // Dataset shaping for round-status badges
+  function roundStatus(r: RoundRow): "FINAL" | "LIVE" | "UPCOMING" {
+    if (r.is_locked) return "FINAL";
+    const rs = scores.filter((s) => s.round_id === r.id);
+    if (rs.length > 0) return "LIVE";
+    return "UPCOMING";
+  }
 
   return (
-    <div className="paper-grain mx-auto max-w-3xl px-4 py-6 space-y-6">
-      <section>
-        {liveRound ? (
-          <HeroLive roundDay={liveRound.day} course={liveRound.course_name} />
-        ) : allFinal ? (
-          <HeroFinal />
-        ) : upcomingRound ? (
-          <HeroUpcoming
-            day={upcomingRound.day}
-            course={upcomingRound.course_name}
-            when={new Date(`${upcomingRound.date}T${upcomingRound.tee_time}`)}
-          />
-        ) : (
-          <HeroFinal />
-        )}
-      </section>
+    <div>
+      {/* HERO — split view: editorial display on left, live standings on right */}
+      <section className="navy-grain text-[var(--color-cream)]">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-10 md:py-16 grid md:grid-cols-[1fr_1.4fr] gap-10 md:gap-16 items-center">
+          <div className="text-center md:text-left">
+            {liveRound ? (
+              <div
+                className="pulse-live inline-flex items-center gap-2"
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 10,
+                  letterSpacing: "0.3em",
+                  color: "var(--color-oxblood)",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background: "var(--color-oxblood)",
+                  }}
+                />
+                LIVE NOW
+              </div>
+            ) : upcomingRound ? (
+              <div className="eyebrow">Up next</div>
+            ) : (
+              <div className="eyebrow">Tournament complete</div>
+            )}
+            <h1
+              className="font-display mt-3 md:mt-4"
+              style={{
+                fontSize: 56,
+                lineHeight: 0.95,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              <span className="hidden md:inline" style={{ fontSize: 88 }}>
+                Day {toRoman(heroDay)}.<br />
+                {heroCourse.replace(/\s*[—–-].*$/, "").replace(/\s*(C\.C\.|Country Club|Golf Club|G\.C\.).*/, "")}.
+              </span>
+              <span className="md:hidden">
+                Day {toRoman(heroDay)}.<br />
+                {heroCourse.replace(/\s*[—–-].*$/, "").replace(/\s*(C\.C\.|Country Club|Golf Club|G\.C\.).*/, "")}.
+              </span>
+            </h1>
+            <p
+              className="font-body-serif italic mt-4 md:mt-4"
+              style={{
+                fontSize: 17,
+                opacity: 0.72,
+                lineHeight: 1.55,
+                maxWidth: 460,
+                marginInline: "auto",
+              }}
+            >
+              {liveRound ? heroBlurb(liveRound, liveThru, standings) : upcomingRound ? `${upcomingRound.format === "singles" ? "Singles match play." : upcomingRound.format === "scramble_2man" ? "Two-man scramble. Pools AD & BC." : "The team scramble. The Cup is decided."} Tees off ${formatTeeTime(upcomingRound.tee_time)}.` : "Three rounds in the books. The Cup is awarded."}
+            </p>
+            {liveRound && (
+              <div className="hidden md:flex gap-2.5 mt-7">
+                <Link
+                  href={`/day${liveRound.day}` as never}
+                  className="bg-[var(--color-gold)] text-[var(--color-navy)] font-ui font-semibold uppercase hover:bg-[var(--color-gold-light)]"
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: "0.3em",
+                    padding: "13px 28px",
+                  }}
+                >
+                  Enter Scores
+                </Link>
+                <Link
+                  href="/leaderboard"
+                  className="bg-transparent text-[var(--color-cream)] font-ui font-medium uppercase"
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: "0.3em",
+                    padding: "13px 28px",
+                    border: "1px solid var(--color-cream)",
+                  }}
+                >
+                  Leaderboard
+                </Link>
+              </div>
+            )}
+          </div>
 
-      {yourTeam && (
-        <section
-          className="flex items-start justify-between"
-          style={{
-            borderTop: "1px solid var(--color-gold)",
-            borderBottom: "1px solid var(--color-gold)",
-            padding: "14px 0",
-          }}
-        >
+          {/* Standings panel */}
           <div>
-            <div className="eyebrow">Your team</div>
-            <div className="font-display text-[22px] text-[var(--color-navy)] mt-1 flex items-center gap-2">
+            <div className="flex items-baseline justify-between mb-3.5">
+              <div className="eyebrow">The Standings</div>
               <span
-                className="inline-block w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: yourTeam.display_color }}
-              />
-              {yourTeam.name}
-            </div>
-            <div className="font-body-serif italic text-xs text-[var(--color-stone)] mt-1">
-              {yourTeam.status_label}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-mono text-4xl text-[var(--color-navy)] leading-none">
-              {yourTeam.total_points}
-            </div>
-            <div className="eyebrow-stone mt-1" style={{ fontSize: 8 }}>
-              {ordinal(yourTeam.rank)} · PTS
-            </div>
-          </div>
-        </section>
-      )}
-
-      <section>
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="eyebrow">Standings · Top III</div>
-          <Link
-            href="/leaderboard"
-            className="text-[10px] font-ui uppercase tracking-[0.25em] text-[var(--color-gold)] font-semibold"
-          >
-            See all →
-          </Link>
-        </div>
-        <div className="rule-gold mb-1" />
-        {leaderboard.slice(0, 3).map((row, i) => (
-          <div
-            key={row.team_id}
-            className="grid items-center gap-2.5 py-2.5"
-            style={{
-              gridTemplateColumns: "24px 1fr auto auto",
-              borderBottom: "1px solid var(--color-rule-cream)",
-              borderTop: i === 0 ? 0 : 0,
-            }}
-          >
-            <span className="font-mono text-sm text-[var(--color-navy)]">{toRoman(row.rank)}</span>
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className="inline-block w-2 h-2 rounded-full shrink-0"
-                style={{ backgroundColor: row.display_color }}
-              />
-              <span className="font-display text-[17px] text-[var(--color-navy)] truncate">
-                {row.name}
+                className="font-mono"
+                style={{ fontSize: 10, color: "var(--color-cream)", opacity: 0.6 }}
+              >
+                {standings[0]?.status_label?.toUpperCase() ?? ""}
               </span>
             </div>
-            <span className="font-mono text-[10px] text-[var(--color-stone)]">
-              {row.day1_points}·{row.day2_points}·{row.day3_points || "—"}
-            </span>
-            <span className="font-mono text-lg text-[var(--color-navy)]">
-              {row.total_points}
-            </span>
-          </div>
-        ))}
-      </section>
-
-      <section>
-        <div className="eyebrow mb-2">The schedule</div>
-        {rounds.map((r) => (
-          <div
-            key={r.id}
-            className="flex items-center justify-between py-3"
-            style={{ borderTop: "1px solid var(--color-rule-cream)" }}
-          >
-            <div>
-              <div className="flex items-baseline gap-2">
-                <span className="font-mono text-[12px] text-[var(--color-gold)]">
-                  {toRoman(r.day)}
-                </span>
-                <span className="font-display text-base text-[var(--color-navy)]">
-                  {r.course_name}
-                </span>
-              </div>
-              <div className="font-body-serif italic text-[11px] text-[var(--color-stone)] mt-0.5">
-                {formatRoundDate(r.date)} · {formatTeeTime(r.tee_time)}
-              </div>
+            <div className="rule-gold" />
+            {standings.map((s) => {
+              const lead = s.rank === 1;
+              return (
+                <div
+                  key={s.team_id}
+                  className="grid items-center relative md:grid-cols-[40px_1fr_60px_60px_60px_70px] grid-cols-[28px_1fr_50px]"
+                  style={{
+                    padding: "14px 0",
+                    borderBottom: "1px solid rgba(165,136,89,0.25)",
+                  }}
+                >
+                  {lead && (
+                    <span
+                      className="absolute"
+                      style={{
+                        left: -12,
+                        top: 0,
+                        bottom: 0,
+                        width: 3,
+                        background: "var(--color-gold)",
+                      }}
+                    />
+                  )}
+                  <span
+                    className="font-mono md:text-xl text-base"
+                    style={{
+                      color: lead ? "var(--color-gold)" : "var(--color-cream)",
+                    }}
+                  >
+                    {s.rank}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="inline-block rounded-full shrink-0"
+                        style={{
+                          width: 8,
+                          height: 8,
+                          background: s.display_color,
+                        }}
+                      />
+                      <span
+                        className="font-display truncate"
+                        style={{
+                          fontSize: 22,
+                          color: "var(--color-cream)",
+                        }}
+                      >
+                        {s.name}
+                      </span>
+                    </div>
+                    <div
+                      className="hidden md:block font-body-serif italic mt-1 truncate"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--color-cream)",
+                        opacity: 0.6,
+                      }}
+                    >
+                      {(playersByTeam.get(s.team_id) ?? []).join(" · ")}
+                    </div>
+                  </div>
+                  <span
+                    className="hidden md:inline font-mono text-right"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--color-cream)",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {s.day1_points}
+                  </span>
+                  <span
+                    className="hidden md:inline font-mono text-right"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--color-cream)",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {s.day2_points}
+                  </span>
+                  <span
+                    className="hidden md:inline font-mono text-right"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--color-cream)",
+                      opacity: 0.4,
+                    }}
+                  >
+                    {s.day3_points || "—"}
+                  </span>
+                  <span
+                    className="font-mono text-right"
+                    style={{
+                      fontSize: 22,
+                      color: "var(--color-gold)",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {s.total_points}
+                  </span>
+                </div>
+              );
+            })}
+            <div
+              className="mt-3.5 font-ui uppercase"
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.25em",
+                color: "var(--color-cream)",
+                opacity: 0.55,
+              }}
+            >
+              Updated on the half hour during play.
             </div>
-            <RoundStatusChip round={r} />
           </div>
-        ))}
+        </div>
       </section>
 
-      <section>
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="eyebrow">Recent chat</div>
-          <Link
-            href="/chat"
-            className="text-[10px] font-ui uppercase tracking-[0.25em] text-[var(--color-gold)] font-semibold"
+      {/* SCHEDULE — three days, three courses */}
+      <section className="paper-grain bg-[var(--color-cream)]">
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-12 md:py-16">
+          <div className="eyebrow">The schedule</div>
+          <h2
+            className="font-display text-[var(--color-navy)] mt-1.5"
+            style={{ fontSize: 44, lineHeight: 1 }}
           >
-            See all →
-          </Link>
+            Three days. Three courses.
+          </h2>
+          <div className="rule-gold mt-5" />
+          <div className="grid md:grid-cols-3 gap-8">
+            {rounds.map((r) => {
+              const status = roundStatus(r);
+              return (
+                <div
+                  key={r.id}
+                  className="py-5 md:py-7 border-b md:border-b-0"
+                  style={{ borderColor: "var(--color-rule-cream)" }}
+                >
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span
+                      className="font-mono"
+                      style={{ fontSize: 22, color: "var(--color-gold)" }}
+                    >
+                      {toRoman(r.day)}
+                    </span>
+                    <StatusBadge status={status} />
+                  </div>
+                  <div
+                    className="font-display text-[var(--color-navy)]"
+                    style={{ fontSize: 32, lineHeight: 1.05 }}
+                  >
+                    {r.course_name}
+                  </div>
+                  <div
+                    className="font-body-serif italic mt-1.5"
+                    style={{ fontSize: 13, color: "var(--color-stone)" }}
+                  >
+                    {formatLabel(r.format)}
+                  </div>
+                  <div
+                    className="font-ui uppercase mt-3"
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.22em",
+                      color: "var(--color-stone)",
+                    }}
+                  >
+                    {formatRoundDate(r.date)} · {formatTeeTime(r.tee_time)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="rule-gold mb-2" />
-        {recentChat.length === 0 ? (
-          <p className="font-body-serif italic text-[var(--color-stone)] text-sm">
-            No messages yet — kick it off on the range.
-          </p>
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {[...recentChat].reverse().map((m) => (
-              <li
-                key={m.id}
-                className={
-                  m.kind === "system"
-                    ? "italic text-[var(--color-stone)] text-center font-body-serif"
-                    : "font-body-serif"
-                }
-              >
-                {m.body}
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
-      <div className="pt-4 pb-2 text-center">
-        <div
-          className="divider-stars font-ui font-semibold"
-          style={{ fontSize: 8, letterSpacing: "0.32em" }}
-        >
-          <span>THE STAPLETON CUP</span>
+      {/* CUP QUOTE */}
+      <section className="navy-grain text-[var(--color-cream)] text-center">
+        <div className="mx-auto max-w-[720px] px-6 py-16 md:py-20">
+          <div
+            className="divider-stars font-ui font-semibold"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.32em",
+              color: "var(--color-gold)",
+              maxWidth: 600,
+              margin: "0 auto",
+            }}
+          >
+            <span>THE STAPLETON CUP</span>
+          </div>
+          <div
+            className="font-display mt-7"
+            style={{ fontSize: 36, lineHeight: 1.3 }}
+          >
+            “One mark forever. One small thing new every year. That is the deal.”
+          </div>
+          <div
+            className="font-ui uppercase mt-5"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.32em",
+              color: "var(--color-gold)",
+            }}
+          >
+            — Year I · MMXXII
+          </div>
         </div>
-        <div className="font-body-serif italic text-[13px] text-[var(--color-stone)] mt-3 leading-relaxed">
-          “One mark forever. One small thing new every year. That is the deal.”
-        </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] ?? s[v] ?? s[0]);
+function heroBlurb(
+  round: RoundRow,
+  thru: number,
+  standings: ReturnType<typeof computeLeaderboard>,
+): string {
+  const top3 = standings.slice(0, 3);
+  const close =
+    top3.length === 3 ? top3[2].total_points - top3[0].total_points : 0;
+  const closeBlurb = close > 0 ? ` Three teams within ${close} points.` : "";
+  const fmt =
+    round.format === "singles"
+      ? "Singles match play."
+      : round.format === "scramble_2man"
+        ? "Two-man scramble. Pools AD & BC."
+        : "Four men. One ball. The Cup is decided.";
+  const thruBlurb = thru > 0 ? ` ${thru === 18 ? "Final round." : `Through hole ${thru}.`}` : "";
+  return `${fmt}${thruBlurb}${closeBlurb}`;
 }
 
-function HeroLive({ roundDay, course }: { roundDay: number; course: string }) {
-  return (
-    <>
-      <div className="eyebrow">Live · Round in progress</div>
-      <h1
-        className="font-display text-[var(--color-navy)] mt-2"
-        style={{ fontSize: 30, lineHeight: 1.05 }}
-      >
-        Day{" "}
-        <span className="font-mono not-italic" style={{ fontSize: 24 }}>
-          {toRoman(roundDay)}
-        </span>{" "}
-        · {course}
-      </h1>
-      <div className="font-body-serif italic text-[13px] text-[var(--color-stone)] mt-2">
-        {roundDay === 1
-          ? "Singles · net stroke play."
-          : roundDay === 2
-            ? "Two-man scramble. Pools AD & BC."
-            : "Four men. One ball. The Cup is decided."}
-      </div>
-      <div className="mt-4 flex gap-2">
-        <Link
-          href={`/day${roundDay}` as never}
-          className="flex-1 text-center bg-[var(--color-navy)] text-[var(--color-cream)] py-3 font-ui font-medium uppercase text-[10px] tracking-[0.25em]"
-        >
-          Enter scores
-        </Link>
-        <Link
-          href="/leaderboard"
-          className="flex-1 text-center bg-transparent text-[var(--color-navy)] py-3 font-ui font-medium uppercase text-[10px] tracking-[0.25em] border border-[var(--color-navy)]"
-        >
-          Leaderboard
-        </Link>
-      </div>
-    </>
-  );
+function formatLabel(f: string): string {
+  if (f === "singles") return "Singles · net stroke play";
+  if (f === "scramble_2man") return "Two-man scramble · pools AD & BC";
+  return "Four-man team scramble · for the Cup";
 }
 
-function HeroUpcoming({ day, course, when }: { day: number; course: string; when: Date }) {
-  const diff = when.getTime() - Date.now();
-  const hours = Math.max(0, Math.floor(diff / 3600000));
-  const minutes = Math.max(0, Math.floor((diff % 3600000) / 60000));
-  return (
-    <>
-      <div className="eyebrow">Up next</div>
-      <h1
-        className="font-display text-[var(--color-navy)] mt-2"
-        style={{ fontSize: 28, lineHeight: 1.05 }}
+function StatusBadge({ status }: { status: "FINAL" | "LIVE" | "UPCOMING" }) {
+  const base = "font-ui font-semibold uppercase";
+  const styles = {
+    fontSize: 9,
+    letterSpacing: "0.28em",
+  } as const;
+  if (status === "LIVE")
+    return (
+      <span
+        className={`${base} pulse-live`}
+        style={{
+          ...styles,
+          color: "var(--color-oxblood)",
+          border: "1px solid var(--color-oxblood)",
+          padding: "2px 8px",
+        }}
       >
-        Day{" "}
-        <span className="font-mono not-italic" style={{ fontSize: 22 }}>
-          {toRoman(day)}
-        </span>{" "}
-        tees off in {hours}h {minutes}m
-      </h1>
-      <div className="font-body-serif italic text-[13px] text-[var(--color-stone)] mt-2">
-        {course}
-      </div>
-    </>
-  );
-}
-
-function HeroFinal() {
-  return (
-    <>
-      <div className="eyebrow">The tournament</div>
-      <h1
-        className="font-display text-[var(--color-navy)] mt-2"
-        style={{ fontSize: 30, lineHeight: 1.05 }}
-      >
-        The field is finished.
-      </h1>
-      <div className="font-body-serif italic text-[13px] text-[var(--color-stone)] mt-2">
-        Final results.
-      </div>
-      <Link
-        href="/leaderboard"
-        className="mt-4 inline-block bg-[var(--color-navy)] text-[var(--color-cream)] py-3 px-5 font-ui font-medium uppercase text-[10px] tracking-[0.25em]"
-      >
-        See the standings →
-      </Link>
-    </>
-  );
-}
-
-function RoundStatusChip({ round }: { round: RoundRow }) {
-  const now = new Date();
-  const start = new Date(`${round.date}T${round.tee_time}`);
-  const status = round.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";
-  const base =
-    "font-ui font-semibold uppercase text-[8px] tracking-[0.25em] inline-block";
-  if (status === "UPCOMING")
-    return <span className={`${base} text-[var(--color-stone)]`}>{status}</span>;
+        LIVE
+      </span>
+    );
   if (status === "FINAL")
     return (
-      <span className={`${base} bg-[var(--color-navy)] text-[var(--color-cream)] px-2 py-1`}>
-        {status}
+      <span
+        className={base}
+        style={{
+          ...styles,
+          color: "var(--color-cream)",
+          background: "var(--color-navy)",
+          padding: "4px 8px",
+        }}
+      >
+        FINAL
       </span>
     );
   return (
-    <span
-      className={`${base} text-[var(--color-oxblood)] border border-[var(--color-oxblood)] px-2 py-0.5 pulse-live`}
-    >
-      {status}
+    <span className={base} style={{ ...styles, color: "var(--color-stone)" }}>
+      UPCOMING
     </span>
   );
 }

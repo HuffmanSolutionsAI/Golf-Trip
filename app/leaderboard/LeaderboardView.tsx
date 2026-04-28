@@ -59,31 +59,51 @@ export function LeaderboardView({
   return (
     <div>
       <div
-        className="navy-grain text-[var(--color-cream)] px-4 pt-5 pb-4"
-        style={{ borderBottom: "1px solid rgba(165,136,89,0.4)" }}
+        className="paper-grain"
+        style={{ borderBottom: "1px solid var(--color-gold)" }}
       >
-        <div className="mx-auto max-w-3xl">
-          <div className="eyebrow-cream" style={{ opacity: 0.85 }}>
-            LEADERBOARD · YEAR V
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-12 md:py-16">
+          <div
+            className="font-ui uppercase"
+            style={{
+              fontSize: 11,
+              letterSpacing: "0.32em",
+              color: "var(--color-gold)",
+              fontWeight: 500,
+            }}
+          >
+            LIVE · OVERALL
           </div>
           <h1
-            className="font-display mt-1.5"
-            style={{ fontSize: 30, lineHeight: 1, color: "var(--color-cream)" }}
+            className="font-display text-[var(--color-navy)] mt-3"
+            style={{
+              fontSize: 56,
+              lineHeight: 1,
+              letterSpacing: "-0.01em",
+            }}
           >
             The Field
           </h1>
-          <div className="mt-2 flex items-center justify-between">
-            <div className="eyebrow-cream" style={{ opacity: 0.7, fontSize: 9 }}>
-              {status.toUpperCase()}
-            </div>
+          <div className="mt-3.5 flex items-center justify-between gap-3">
+            <p
+              className="font-body-serif italic"
+              style={{
+                fontSize: 17,
+                color: "var(--color-stone)",
+                opacity: 0.7,
+                lineHeight: 1.55,
+              }}
+            >
+              {status} · Updated on the half hour.
+            </p>
             {isLive && (
               <div
-                className="pulse-live flex items-center gap-1.5"
+                className="pulse-live flex items-center gap-1.5 shrink-0"
                 style={{
                   fontFamily: "var(--font-ui)",
                   fontWeight: 600,
-                  fontSize: 9,
-                  letterSpacing: "0.25em",
+                  fontSize: 10,
+                  letterSpacing: "0.28em",
                   color: "var(--color-oxblood)",
                 }}
               >
@@ -102,7 +122,7 @@ export function LeaderboardView({
         </div>
       </div>
 
-      <div className="mx-auto max-w-3xl px-4 py-4 space-y-4 paper-grain">
+      <div className="mx-auto max-w-[1100px] px-5 md:px-8 py-6 md:py-10 paper-grain">
         <Tabs tab={tab} onChange={setTab} />
 
         {tab === "overall" && <OverallTab rows={overall} playersByTeam={playersByTeam} />}
@@ -148,22 +168,54 @@ function OverallTab({
   rows: LeaderboardRow[];
   playersByTeam: Record<string, PlayerRow[]>;
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
   if (rows.length === 0) {
-    return <EmptyState message="Standings will appear here once the first hole is entered." />;
+    return (
+      <EmptyState message="Standings will appear here once the first hole is entered." />
+    );
   }
   return (
-    <div className="space-y-3">
+    <div>
+      <div
+        className="grid items-center px-3 py-2.5"
+        style={{
+          gridTemplateColumns:
+            "60px minmax(0,2fr) 60px 60px 60px 100px",
+          fontFamily: "var(--font-ui)",
+          fontSize: 10,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          fontWeight: 500,
+          textTransform: "uppercase",
+          borderBottom: "1px solid var(--color-rule)",
+        }}
+      >
+        <span>Pos</span>
+        <span>Team</span>
+        <span className="text-right">D·I</span>
+        <span className="text-right">D·II</span>
+        <span className="text-right">D·III</span>
+        <span className="text-right">Pts</span>
+      </div>
       {rows.map((row) => {
-        const isOpen = expanded === row.team_id;
-        const members = playersByTeam[row.team_id] ?? [];
-        const captain = members.find((p) => p.team_slot === "A");
         const isLeader = row.rank === 1;
+        const members = playersByTeam[row.team_id] ?? [];
+        const memberNames = members
+          .slice()
+          .sort((a, b) => a.team_slot.localeCompare(b.team_slot))
+          .map((p) => p.name);
         return (
-          <Card
+          <Link
             key={row.team_id}
-            className="transition-all relative"
-            style={isLeader ? { background: "rgba(165,136,89,0.08)" } : undefined}
+            href={`/teams/${row.team_id}`}
+            className="grid items-center px-3 py-5 relative"
+            style={{
+              gridTemplateColumns:
+                "60px minmax(0,2fr) 60px 60px 60px 100px",
+              borderBottom: "1px solid var(--color-rule-cream)",
+              background: isLeader
+                ? "rgba(165,136,89,0.08)"
+                : "transparent",
+            }}
           >
             {isLeader && (
               <span
@@ -171,73 +223,75 @@ function OverallTab({
                 style={{ width: 3, background: "var(--color-gold)" }}
               />
             )}
-            <button
-              onClick={() => setExpanded(isOpen ? null : row.team_id)}
-              className="w-full text-left"
+            <span
+              className="font-mono"
+              style={{
+                fontSize: 22,
+                color: "var(--color-navy)",
+                paddingLeft: 12,
+              }}
             >
-              <CardContent className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xl w-9 text-center text-[var(--color-navy)]">
-                    {toRoman(row.rank)}
-                  </span>
-                  <span
-                    className="inline-block w-3 h-3 rounded-full shrink-0"
-                    style={{ backgroundColor: row.display_color }}
-                  />
-                  <div>
-                    <div className="font-display text-[20px] text-[var(--color-navy)]">
-                      {row.name}
-                    </div>
-                    {captain && (
-                      <div className="text-[11px] font-body-serif italic text-[var(--color-stone)]">
-                        Captain · {captain.name}
-                      </div>
-                    )}
-                    <div className="text-[11px] font-mono text-[var(--color-stone)] tabular-nums mt-0.5">
-                      D·I {row.day1_points} · D·II {row.day2_points} · D·III{" "}
-                      {row.day3_points || "—"}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="font-mono text-3xl text-[var(--color-navy)] tabular-nums">
-                    {row.total_points}
-                  </span>
-                  {isOpen ? (
-                    <ChevronUp size={16} className="text-[var(--color-stone)]" />
-                  ) : (
-                    <ChevronDown size={16} className="text-[var(--color-stone)]" />
-                  )}
-                </div>
-              </CardContent>
-            </button>
-            {isOpen && (
-              <div className="border-t border-[var(--color-rule)] px-4 py-3 space-y-2">
-                <div className="text-xs font-ui uppercase tracking-[0.2em] text-[var(--color-gold)]">
-                  Roster
-                </div>
-                <ul className="space-y-1 text-sm">
-                  {members.map((p) => (
-                    <li key={p.id} className="flex items-center justify-between">
-                      <Link href={`/players/${p.id}`} className="hover:underline">
-                        {p.name}{" "}
-                        <span className="text-xs text-neutral-500">· HCP {p.handicap}</span>
-                      </Link>
-                      <span className="font-mono text-xs text-neutral-500">{p.team_slot}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={`/teams/${row.team_id}`}
-                  className="inline-block mt-2 text-xs uppercase tracking-widest font-ui text-[var(--color-gold)]"
+              {row.rank}
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="inline-block rounded-full shrink-0"
+                  style={{
+                    width: 10,
+                    height: 10,
+                    background: row.display_color,
+                  }}
+                />
+                <span
+                  className="font-display text-[var(--color-navy)] truncate"
+                  style={{ fontSize: 26 }}
                 >
-                  View team →
-                </Link>
+                  {row.name}
+                </span>
               </div>
-            )}
-          </Card>
+              <div
+                className="font-body-serif italic mt-1.5 truncate"
+                style={{ fontSize: 13, color: "var(--color-stone)" }}
+              >
+                {memberNames.join(" · ")}
+              </div>
+            </div>
+            <span
+              className="font-mono text-right"
+              style={{ fontSize: 16, color: "var(--color-navy)" }}
+            >
+              {row.day1_points}
+            </span>
+            <span
+              className="font-mono text-right"
+              style={{ fontSize: 16, color: "var(--color-navy)" }}
+            >
+              {row.day2_points}
+            </span>
+            <span
+              className="font-mono text-right"
+              style={{ fontSize: 16, color: "var(--color-stone)" }}
+            >
+              {row.day3_points || "—"}
+            </span>
+            <span
+              className="font-mono text-right"
+              style={{ fontSize: 32, color: "var(--color-navy)" }}
+            >
+              {row.total_points}
+            </span>
+          </Link>
         );
       })}
+      <div className="text-center pt-5 pb-2">
+        <span
+          className="eyebrow-stone"
+          style={{ fontSize: 9 }}
+        >
+          UPDATED ON THE HALF HOUR
+        </span>
+      </div>
     </div>
   );
 }

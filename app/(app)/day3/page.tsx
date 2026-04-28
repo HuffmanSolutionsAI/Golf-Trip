@@ -6,9 +6,12 @@ import {
 } from "@/lib/repo/scores";
 import { listPlayers, listTeams } from "@/lib/repo/players";
 import { computeDay3StandingRows } from "@/lib/repo/standings";
-import { PageHero } from "@/components/layout/PageHero";
+import { roundHandicap } from "@/lib/scoring/handicaps";
+import { formatTeeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const ROMAN_LIST = ["I", "II", "III", "IV", "V"];
 
 export default function Day3IndexPage() {
   const round = getRoundByDay(3);
@@ -21,66 +24,158 @@ export default function Day3IndexPage() {
   const standByEntry = new Map(standings.map((s) => [s.entry_id, s]));
 
   const sorted = [...entries].sort(
-    (a, b) => (standByEntry.get(a.id)?.rank ?? 99) - (standByEntry.get(b.id)?.rank ?? 99),
+    (a, b) =>
+      (standByEntry.get(a.id)?.rank ?? 99) -
+      (standByEntry.get(b.id)?.rank ?? 99),
   );
 
   return (
-    <div className="paper-grain">
-      <PageHero
-        eyebrow={`DAY III · ${round.course_name.toUpperCase()}`}
-        title="The team scramble"
-        subtitle="Four men. One ball. The Cup is decided."
-      />
+    <div>
+      <div
+        className="paper-grain"
+        style={{ borderBottom: "1px solid var(--color-gold)" }}
+      >
+        <div className="mx-auto max-w-[1280px] px-5 md:px-8 py-12 md:py-16">
+          <div
+            className="font-ui uppercase"
+            style={{
+              fontSize: 11,
+              letterSpacing: "0.32em",
+              color: "var(--color-gold)",
+              fontWeight: 500,
+            }}
+          >
+            DAY III · {round.course_name.toUpperCase()}
+          </div>
+          <h1
+            className="font-display text-[var(--color-navy)] mt-3"
+            style={{
+              fontSize: 56,
+              lineHeight: 1,
+              letterSpacing: "-0.01em",
+            }}
+          >
+            The team scramble.
+          </h1>
+          <p
+            className="font-body-serif italic mt-4"
+            style={{
+              fontSize: 17,
+              color: "var(--color-stone)",
+              opacity: 0.7,
+              lineHeight: 1.55,
+              maxWidth: 540,
+            }}
+          >
+            Four men. One ball. Eighteen holes. The Cup is decided here.
+          </p>
+        </div>
+      </div>
 
-      <div className="mx-auto max-w-3xl px-4 py-4">
-        <div className="eyebrow">Up next · 10:00 a.m.</div>
-        <div className="rule-gold mt-1.5 mb-1" />
-        {sorted.map((e) => {
-          const s = standByEntry.get(e.id);
-          const team = teams.get(e.team_id);
-          const names = listParticipantsForEntry(e.id)
-            .map((p) => players.get(p.player_id)?.name)
-            .filter(Boolean) as string[];
-          return (
-            <Link
-              key={e.id}
-              href={`/day3/entries/${e.id}`}
-              className="block py-4"
-              style={{ borderBottom: "1px solid var(--color-rule-cream)" }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="font-mono text-[13px] text-[var(--color-stone)] w-4">
-                    {s?.rank ?? "—"}
-                  </span>
+      <div className="paper-grain">
+        <div className="mx-auto max-w-[900px] px-5 md:px-8 py-8 md:py-12">
+          <div
+            className="divider-stars font-ui font-semibold mb-8"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.32em",
+              color: "var(--color-gold)",
+            }}
+          >
+            <span>UP NEXT · {formatTeeTime(round.tee_time).toUpperCase()} SATURDAY</span>
+          </div>
+          {sorted.map((e, i) => {
+            const team = teams.get(e.team_id);
+            const teamPlayers = listParticipantsForEntry(e.id)
+              .map((p) => players.get(p.player_id))
+              .filter(Boolean) as ReturnType<typeof listPlayers>;
+            const standing = standByEntry.get(e.id);
+            return (
+              <Link
+                key={e.id}
+                href={`/day3/entries/${e.id}`}
+                className="block py-6 md:py-7"
+                style={{
+                  borderTop: i === 0 ? "1px solid var(--color-rule)" : 0,
+                  borderBottom: "1px solid var(--color-rule-cream)",
+                }}
+              >
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="font-mono"
+                      style={{
+                        fontSize: 16,
+                        color: "var(--color-gold)",
+                        width: 24,
+                      }}
+                    >
+                      {ROMAN_LIST[i] ?? i + 1}
+                    </span>
+                    <span
+                      className="inline-block rounded-full"
+                      style={{
+                        width: 10,
+                        height: 10,
+                        background: team?.display_color,
+                      }}
+                    />
+                    <span
+                      className="font-display text-[var(--color-navy)]"
+                      style={{ fontSize: 28 }}
+                    >
+                      {team?.name}
+                    </span>
+                  </div>
                   <span
-                    className="inline-block w-2 h-2 rounded-full"
-                    style={{ backgroundColor: team?.display_color }}
-                  />
-                  <span className="font-display text-[18px] text-[var(--color-navy)]">
-                    {team?.name}
+                    className="font-mono"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--color-stone)",
+                    }}
+                  >
+                    {standing && standing.holes_thru > 0
+                      ? `${standing.team_raw} · thru ${standing.holes_thru}`
+                      : "—"}
                   </span>
                 </div>
-                <span className="font-mono text-[12px] text-[var(--color-stone)] tabular-nums">
-                  {s ? `${s.team_raw} · thru ${s.holes_thru}` : "—"}
-                </span>
-              </div>
-              <div
-                className="font-body-serif italic text-[12px] text-[var(--color-stone)] mt-1.5"
-                style={{ marginLeft: 30 }}
-              >
-                {names.join(" · ")}
-              </div>
-            </Link>
-          );
-        })}
-
-        <div className="pt-8 pb-2 text-center">
-          <div
-            className="divider-stars font-ui font-semibold"
-            style={{ fontSize: 8, letterSpacing: "0.32em" }}
-          >
-            <span>FOR THE STAPLETON CUP</span>
+                <div
+                  className="grid grid-cols-2 md:grid-cols-4 gap-2 ml-9"
+                >
+                  {teamPlayers.map((p) => (
+                    <div
+                      key={p.id}
+                      className="font-body-serif italic"
+                      style={{ fontSize: 13, color: "var(--color-ink)" }}
+                    >
+                      {p.name}{" "}
+                      <span
+                        className="font-mono"
+                        style={{
+                          fontSize: 10,
+                          color: "var(--color-stone)",
+                          fontStyle: "normal",
+                        }}
+                      >
+                        · hcp {roundHandicap(p.handicap)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Link>
+            );
+          })}
+          <div className="text-center mt-10">
+            <div
+              className="divider-stars font-ui font-semibold"
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.32em",
+                color: "var(--color-gold)",
+              }}
+            >
+              <span>FOR THE STAPLETON CUP</span>
+            </div>
           </div>
         </div>
       </div>

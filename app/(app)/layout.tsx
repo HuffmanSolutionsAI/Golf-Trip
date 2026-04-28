@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/session";
 import { TopNav } from "@/components/layout/TopNav";
-import { BottomTabBar } from "@/components/layout/BottomTabBar";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { LiveTicker } from "@/components/layout/LiveTicker";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +15,15 @@ export default async function AuthedLayout({
   if (!player) redirect("/");
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--color-paper)] flex flex-col">
+    <div className="min-h-[100dvh] bg-[var(--color-cream)] flex flex-col">
+      <LiveTicker />
       <TopNav
         playerName={player.name}
         teamName={player.team?.name}
         isAdmin={!!player.is_admin}
       />
-      <div className="flex-1 flex">
-        <Sidebar isAdmin={!!player.is_admin} />
-        <main className="flex-1 pb-16 md:pb-4">{children}</main>
-      </div>
-      <BottomTabBar />
+      <main className="flex-1">{children}</main>
+      <SiteFooter />
     </div>
   );
 }

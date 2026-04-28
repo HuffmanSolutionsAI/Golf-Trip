@@ -40,12 +40,15 @@ export function LandingSignInForm({ players }: { players: PlayerOption[] }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4 text-left">
       <div>
-        <div className="eyebrow-cream mb-1.5">The Field</div>
+        <div className="eyebrow-cream mb-1.5" style={{ opacity: 0.85 }}>
+          Your name
+        </div>
         <select
           value={playerId}
           onChange={(e) => setPlayerId(e.target.value)}
           required
-          className="w-full bg-[var(--color-cream)] text-[var(--color-ink)] font-body-serif italic text-base px-3.5 py-3 focus:outline-none focus:ring-1 focus:ring-[var(--color-gold)]"
+          className="w-full bg-[var(--color-cream)] text-[var(--color-ink)] font-body-serif italic px-3.5 py-3 focus:outline-none focus:ring-1 focus:ring-[var(--color-gold)]"
+          style={{ fontSize: 15, borderRadius: 2 }}
         >
           <option value="">Select your name…</option>
           {players.map((p) => (
@@ -56,7 +59,9 @@ export function LandingSignInForm({ players }: { players: PlayerOption[] }) {
         </select>
       </div>
       <div>
-        <div className="eyebrow-cream mb-1.5">Trip Passcode</div>
+        <div className="eyebrow-cream mb-1.5" style={{ opacity: 0.85 }}>
+          Trip passcode
+        </div>
         <input
           type="password"
           required
@@ -64,15 +69,23 @@ export function LandingSignInForm({ players }: { players: PlayerOption[] }) {
           placeholder="······"
           value={passcode}
           onChange={(e) => setPasscode(e.target.value)}
-          className="w-full bg-[var(--color-cream)] text-[var(--color-ink)] font-body-serif italic text-base px-3.5 py-3 placeholder:text-[var(--color-stone)] focus:outline-none focus:ring-1 focus:ring-[var(--color-gold)]"
+          className="w-full bg-[var(--color-cream)] text-[var(--color-ink)] font-body-serif italic px-3.5 py-3 placeholder:text-[var(--color-stone)] focus:outline-none focus:ring-1 focus:ring-[var(--color-gold)]"
+          style={{ fontSize: 15, borderRadius: 2 }}
         />
       </div>
       <button
         type="submit"
         disabled={status === "signing"}
-        className="w-full bg-[var(--color-gold)] text-[var(--color-navy)] font-ui font-semibold uppercase text-[11px] tracking-[0.3em] py-3.5 hover:bg-[var(--color-gold-light)] disabled:opacity-60"
+        className="w-full bg-[var(--color-gold)] text-[var(--color-navy)] font-ui uppercase hover:bg-[var(--color-gold-light)] disabled:opacity-60"
+        style={{
+          fontSize: 11,
+          letterSpacing: "0.32em",
+          fontWeight: 600,
+          padding: "14px 0",
+          borderRadius: 2,
+        }}
       >
-        {status === "signing" ? "Signing in…" : "Sign in"}
+        {status === "signing" ? "Signing in…" : "Enter the Invitational"}
       </button>
       {error && (
         <div className="text-xs text-[var(--color-gold-light)] text-center">{error}</div>
