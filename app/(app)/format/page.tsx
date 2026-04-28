@@ -149,55 +149,6 @@ export default function FormatPage() {
               </div>
             </div>
           ))}
-
-          <div className="mt-12 md:mt-16">
-            <div className="eyebrow">The fine print</div>
-            <h2
-              className="font-display text-[var(--color-navy)] mt-1.5"
-              style={{ fontSize: 36, lineHeight: 1.05 }}
-            >
-              House rules.
-            </h2>
-            <div className="rule-gold my-5" />
-            <div className="md:columns-2 md:gap-10">
-              {[
-                ["Handicaps", "Stapleton handicaps. Indices fixed forty-eight hours before the field tees off Thursday morning. No adjustments mid-trip."],
-                ["Strokes given", "Strokes are given on Day I and on Day II scramble. Day III is gross — the Cup demands honest numbers."],
-                ["Pace", "Ready golf throughout. The field is twenty; we move with intention. The commissioner may shorten any group exceeding pace."],
-                ["Scoring", "Hole-by-hole entry on the app. The card is locked when the round closes. Disputes go to the commissioner; his ruling is final."],
-                ["Carts", "Carts mandatory at all three courses. One cart per pair on Day I, two per team on Day III."],
-                ["The wagering", "Side games are encouraged and unenforced by the commissioner. Settle in cash before the dinner Saturday."],
-              ].map(([t, b]) => (
-                <div
-                  key={t}
-                  className="mb-6"
-                  style={{ breakInside: "avoid" }}
-                >
-                  <div
-                    className="font-ui uppercase"
-                    style={{
-                      fontSize: 9,
-                      letterSpacing: "0.3em",
-                      color: "var(--color-gold)",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {t}
-                  </div>
-                  <p
-                    className="font-body-serif mt-1.5"
-                    style={{
-                      fontSize: 14,
-                      color: "var(--color-ink)",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {b}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
