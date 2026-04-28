@@ -174,7 +174,7 @@ export default function Day3IndexPage() {
                 color: "var(--color-gold)",
               }}
             >
-              <span>FOR THE STAPLETON CUP</span>
+              <span>FOR THE CUP</span>
             </div>
           </div>
         </div>

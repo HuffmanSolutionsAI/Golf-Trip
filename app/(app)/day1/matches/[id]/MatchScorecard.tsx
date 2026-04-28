@@ -208,7 +208,7 @@ export function MatchScorecard(props: Props) {
                 }}
               >
                 HCP {roundHandicap(props.player1.handicap)} · {props.player1.team.name.toUpperCase()}
-                {p1Strokes > 0 ? ` · GIVES ${p1Strokes}` : ""}
+                {p1Strokes > 0 ? ` · GETS ${p1Strokes}` : ""}
               </div>
             </div>
             <div className="text-center">
@@ -277,7 +277,7 @@ export function MatchScorecard(props: Props) {
                 }}
               >
                 HCP {roundHandicap(props.player2.handicap)} · {props.player2.team.name.toUpperCase()}
-                {p2Strokes > 0 ? ` · GIVES ${p2Strokes}` : ""}
+                {p2Strokes > 0 ? ` · GETS ${p2Strokes}` : ""}
               </div>
             </div>
           </div>

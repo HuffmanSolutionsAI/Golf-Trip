@@ -44,7 +44,7 @@ export default function Day1IndexPage() {
               letterSpacing: "-0.01em",
             }}
           >
-            Match play.
+            Net stroke play.
           </h1>
           <p
             className="font-body-serif italic mt-4"
@@ -139,7 +139,7 @@ export default function Day1IndexPage() {
                   >
                     HCP {a ? roundHandicap(a.handicap) : "—"}
                     {m.stroke_giver_id === m.player1_id
-                      ? ` · GIVES ${m.strokes_given}`
+                      ? ` · GETS ${m.strokes_given}`
                       : ""}
                   </div>
                 </div>
@@ -172,7 +172,7 @@ export default function Day1IndexPage() {
                   >
                     HCP {b ? roundHandicap(b.handicap) : "—"}
                     {m.stroke_giver_id === m.player2_id
-                      ? ` · GIVES ${m.strokes_given}`
+                      ? ` · GETS ${m.strokes_given}`
                       : ""}
                   </div>
                 </div>

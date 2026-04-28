@@ -12,11 +12,11 @@ export default function FormatPage() {
   const days = [
     {
       num: "I",
-      title: "Match play",
+      title: "Net stroke play",
       course: r1
         ? `${r1.course_name} · ${formatTeeTime(r1.tee_time)} tee`
         : "Pinewild · 10:21 a.m. tee",
-      body: "Twenty members. Ten matches drawn by handicap. Net stroke play, total over eighteen. The winner of each matchup earns two points for their team; halved matches split the points one and one. Day I sets the table.",
+      body: "Twenty members. Ten head-to-head matchups, drawn by handicap. Each player records eighteen holes, gross. Net = gross minus strokes given. The lower net wins the matchup and earns two points for their team. A halve splits the points one and one. Day I sets the table.",
       points: "20 points · individual",
     },
     {
@@ -25,7 +25,7 @@ export default function FormatPage() {
       course: r2
         ? `${r2.course_name} · ${formatTeeTime(r2.tee_time)} tee`
         : "Talamore · 8:45 a.m. tee",
-      body: "Ten pairs across two pools — AD and BC. Each pair plays one ball, scramble format, gross to par. Pool winners take four points. Second through fifth take three, two, one, and zero. Day II rewards good pairings.",
+      body: "Ten pairs across two pools — AD and BC. Each pair plays one ball, scramble format, gross to par. In each pool, first place takes four points, second three, third two, fourth one, fifth zero. Day II rewards good pairings.",
       points: "20 points · pools",
     },
     {
@@ -34,8 +34,8 @@ export default function FormatPage() {
       course: r3
         ? `${r3.course_name} · ${formatTeeTime(r3.tee_time)} tee`
         : "Hyland · 10:00 a.m. tee",
-      body: "Five teams of four. One ball. Eighteen holes, scramble format. The lowest team net wins the Stapleton Cup outright. Placement points plus bonus points for under par. The Cup is decided here.",
-      points: "30 points · for the Cup",
+      body: "Five teams of four. One ball, eighteen holes, scramble format. Placement points awarded by lowest gross — eight, six, four, two, zero. Plus a bonus point for every stroke the team finishes under par. The Cup is decided here.",
+      points: "20 + bonus · for the Cup",
     },
   ];
 

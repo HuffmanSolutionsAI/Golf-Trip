@@ -24,8 +24,7 @@ export function SiteFooter() {
                 margin: "16px auto 0",
               }}
             >
-              One mark forever. One small thing new every year. By invitation
-              only — in honor of Neal &amp; Pam Stapleton.
+              By invitation only — in honor of Neal &amp; Pam Stapleton.
             </div>
           </div>
           <div className="md:text-right">

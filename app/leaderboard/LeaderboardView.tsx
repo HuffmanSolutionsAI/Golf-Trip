@@ -296,7 +296,7 @@ function OverallTab({
   );
 }
 
-// ---------- Day 1 (singles match play, individual player rows) ----------
+// ---------- Day 1 (singles net stroke play, individual player rows) ----------
 
 function Day1Tab({ rows, round }: { rows: Day1IndividualRow[]; round?: RoundRow }) {
   if (rows.length === 0) {

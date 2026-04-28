@@ -107,7 +107,7 @@ export default async function HomePage() {
                 marginInline: "auto",
               }}
             >
-              {liveRound ? heroBlurb(liveRound, liveThru, standings) : upcomingRound ? `${upcomingRound.format === "singles" ? "Singles match play." : upcomingRound.format === "scramble_2man" ? "Two-man scramble. Pools AD & BC." : "The team scramble. The Cup is decided."} Tees off ${formatTeeTime(upcomingRound.tee_time)}.` : "Three rounds in the books. The Cup is awarded."}
+              {liveRound ? heroBlurb(liveRound, liveThru, standings) : upcomingRound ? `${upcomingRound.format === "singles" ? "Singles · net stroke play." : upcomingRound.format === "scramble_2man" ? "Two-man scramble. Pools AD & BC." : "The team scramble. The Cup is decided."} Tees off ${formatTeeTime(upcomingRound.tee_time)}.` : "Three rounds in the books. The Cup is awarded."}
             </p>
             {liveRound && (
               <div className="hidden md:flex gap-2.5 mt-7">
@@ -328,39 +328,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* CUP QUOTE */}
-      <section className="navy-grain text-[var(--color-cream)] text-center">
-        <div className="mx-auto max-w-[720px] px-6 py-16 md:py-20">
-          <div
-            className="divider-stars font-ui font-semibold"
-            style={{
-              fontSize: 9,
-              letterSpacing: "0.32em",
-              color: "var(--color-gold)",
-              maxWidth: 600,
-              margin: "0 auto",
-            }}
-          >
-            <span>THE STAPLETON CUP</span>
-          </div>
-          <div
-            className="font-display mt-7"
-            style={{ fontSize: 36, lineHeight: 1.3 }}
-          >
-            “One mark forever. One small thing new every year. That is the deal.”
-          </div>
-          <div
-            className="font-ui uppercase mt-5"
-            style={{
-              fontSize: 10,
-              letterSpacing: "0.32em",
-              color: "var(--color-gold)",
-            }}
-          >
-            — Year I · MMXXII
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
@@ -376,7 +343,7 @@ function heroBlurb(
   const closeBlurb = close > 0 ? ` Three teams within ${close} points.` : "";
   const fmt =
     round.format === "singles"
-      ? "Singles match play."
+      ? "Singles · net stroke play."
       : round.format === "scramble_2man"
         ? "Two-man scramble. Pools AD & BC."
         : "Four men. One ball. The Cup is decided.";
