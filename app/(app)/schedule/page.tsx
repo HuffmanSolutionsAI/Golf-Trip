@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { listRounds } from "@/lib/repo/rounds";
-import { formatRoundDate, formatTeeTime } from "@/lib/utils";
-import { Card, CardContent, CardEyebrow } from "@/components/ui/card";
+import { formatRoundDate, formatTeeTime, toRoman } from "@/lib/utils";
+import { PageHero } from "@/components/layout/PageHero";
 
 export const dynamic = "force-dynamic";
 
 const FORMAT_LABEL: Record<string, string> = {
-  singles: "Singles · Net match play",
-  scramble_2man: "2-man scramble · Two pools",
-  scramble_4man: "4-man scramble · Placement + under par",
+  singles: "Singles · net stroke play",
+  scramble_2man: "Two-man scramble · pools AD & BC",
+  scramble_4man: "Four-man team scramble",
 };
 
 export default function SchedulePage() {
@@ -16,58 +16,70 @@ export default function SchedulePage() {
   const now = new Date();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
-      <div>
-        <div className="eyebrow">Schedule</div>
-        <h1 className="font-display text-3xl text-[var(--color-navy)]">Three rounds</h1>
-      </div>
-      {rounds.map((r) => {
-        const start = new Date(`${r.date}T${r.tee_time}`);
-        const status = r.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";
-        return (
-          <Card key={r.id}>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardEyebrow>
-                    Day {r.day} · {formatRoundDate(r.date)} · {formatTeeTime(r.tee_time)}
-                  </CardEyebrow>
-                  <div className="font-display text-xl text-[var(--color-navy)] mt-1">
-                    {r.course_name}
+    <div className="paper-grain">
+      <PageHero
+        eyebrow="THE SCHEDULE"
+        title="Three rounds"
+        subtitle="Pinehurst · May VII through May IX, MMXXVI."
+      />
+
+      <div className="mx-auto max-w-3xl px-4 py-4">
+        {rounds.map((r) => {
+          const start = new Date(`${r.date}T${r.tee_time}`);
+          const status = r.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";
+          return (
+            <div
+              key={r.id}
+              className="py-5"
+              style={{ borderTop: "1px solid var(--color-rule-cream)" }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2.5">
+                    <span className="font-mono text-[14px] text-[var(--color-gold)]">
+                      {toRoman(r.day)}
+                    </span>
+                    <span className="font-display text-[22px] text-[var(--color-navy)]">
+                      {r.course_name}
+                    </span>
                   </div>
-                  <div className="font-body-serif italic text-neutral-700 text-sm">
-                    {FORMAT_LABEL[r.format]} · par {r.total_par}
+                  <div className="eyebrow-stone mt-1.5" style={{ fontSize: 9 }}>
+                    {formatRoundDate(r.date)} · {formatTeeTime(r.tee_time)} · PAR {r.total_par}
+                  </div>
+                  <div className="font-body-serif italic text-[13px] text-[var(--color-stone)] mt-1.5">
+                    {FORMAT_LABEL[r.format]}
                   </div>
                 </div>
                 <StatusChip status={status as "UPCOMING" | "LIVE" | "FINAL"} />
               </div>
               <Link
                 href={`/day${r.day}` as never}
-                className="inline-block text-xs uppercase tracking-widest font-ui text-[var(--color-gold)]"
+                className="inline-block text-[10px] uppercase tracking-[0.3em] font-ui font-semibold text-[var(--color-gold)] mt-3"
               >
                 {r.day === 1 ? "View matches" : r.day === 2 ? "View pools" : "View teams"} →
               </Link>
-            </CardContent>
-          </Card>
-        );
-      })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function StatusChip({ status }: { status: "UPCOMING" | "LIVE" | "FINAL" }) {
-  const base =
-    "text-[10px] font-ui font-semibold uppercase tracking-[0.25em] rounded px-2 py-1";
+  const base = "font-ui font-semibold uppercase text-[8px] tracking-[0.25em]";
   if (status === "UPCOMING")
-    return <span className={`${base} bg-neutral-200 text-neutral-600`}>{status}</span>;
+    return <span className={`${base} text-[var(--color-stone)]`}>{status}</span>;
   if (status === "FINAL")
     return (
-      <span className={`${base} bg-[var(--color-navy)] text-[var(--color-cream)]`}>
+      <span className={`${base} bg-[var(--color-navy)] text-[var(--color-cream)] px-2 py-1`}>
         {status}
       </span>
     );
   return (
-    <span className={`${base} bg-[var(--color-oxblood)] text-[var(--color-cream)] pulse-live`}>
+    <span
+      className={`${base} text-[var(--color-oxblood)] border border-[var(--color-oxblood)] px-2 py-0.5 pulse-live`}
+    >
       {status}
     </span>
   );

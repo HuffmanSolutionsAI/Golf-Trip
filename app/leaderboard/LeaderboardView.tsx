@@ -13,6 +13,7 @@ import type {
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
+import { toRoman } from "@/lib/utils";
 
 type Props = {
   overall: LeaderboardRow[];
@@ -27,9 +28,9 @@ type TabKey = "overall" | "day1" | "day2" | "day3";
 
 const TAB_LABELS: Record<TabKey, string> = {
   overall: "Overall",
-  day1: "Day 1",
-  day2: "Day 2",
-  day3: "Day 3",
+  day1: "Day I",
+  day2: "Day II",
+  day3: "Day III",
 };
 
 export function LeaderboardView({
@@ -53,27 +54,62 @@ export function LeaderboardView({
   useEffect(() => setDay3(day3Init), [day3Init]);
 
   const status = overall[0]?.status_label ?? "Upcoming";
+  const isLive = status.startsWith("Live");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="eyebrow">Leaderboard</div>
-          <h1 className="font-display text-3xl text-[var(--color-navy)]">
-            {TAB_LABELS[tab]}
+    <div>
+      <div
+        className="navy-grain text-[var(--color-cream)] px-4 pt-5 pb-4"
+        style={{ borderBottom: "1px solid rgba(165,136,89,0.4)" }}
+      >
+        <div className="mx-auto max-w-3xl">
+          <div className="eyebrow-cream" style={{ opacity: 0.85 }}>
+            LEADERBOARD · YEAR V
+          </div>
+          <h1
+            className="font-display mt-1.5"
+            style={{ fontSize: 30, lineHeight: 1, color: "var(--color-cream)" }}
+          >
+            The Field
           </h1>
+          <div className="mt-2 flex items-center justify-between">
+            <div className="eyebrow-cream" style={{ opacity: 0.7, fontSize: 9 }}>
+              {status.toUpperCase()}
+            </div>
+            {isLive && (
+              <div
+                className="pulse-live flex items-center gap-1.5"
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontWeight: 600,
+                  fontSize: 9,
+                  letterSpacing: "0.25em",
+                  color: "var(--color-oxblood)",
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    background: "var(--color-oxblood)",
+                  }}
+                />
+                LIVE
+              </div>
+            )}
+          </div>
         </div>
-        <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-neutral-600">
-          {status}
-        </span>
       </div>
 
-      <Tabs tab={tab} onChange={setTab} />
+      <div className="mx-auto max-w-3xl px-4 py-4 space-y-4 paper-grain">
+        <Tabs tab={tab} onChange={setTab} />
 
-      {tab === "overall" && <OverallTab rows={overall} playersByTeam={playersByTeam} />}
-      {tab === "day1" && <Day1Tab rows={day1} round={rounds.find((r) => r.day === 1)} />}
-      {tab === "day2" && <Day2Tab rows={day2} round={rounds.find((r) => r.day === 2)} />}
-      {tab === "day3" && <Day3Tab rows={day3} round={rounds.find((r) => r.day === 3)} />}
+        {tab === "overall" && <OverallTab rows={overall} playersByTeam={playersByTeam} />}
+        {tab === "day1" && <Day1Tab rows={day1} round={rounds.find((r) => r.day === 1)} />}
+        {tab === "day2" && <Day2Tab rows={day2} round={rounds.find((r) => r.day === 2)} />}
+        {tab === "day3" && <Day3Tab rows={day3} round={rounds.find((r) => r.day === 3)} />}
+      </div>
     </div>
   );
 }
@@ -122,44 +158,55 @@ function OverallTab({
         const isOpen = expanded === row.team_id;
         const members = playersByTeam[row.team_id] ?? [];
         const captain = members.find((p) => p.team_slot === "A");
+        const isLeader = row.rank === 1;
         return (
-          <Card key={row.team_id} className="transition-all">
+          <Card
+            key={row.team_id}
+            className="transition-all relative"
+            style={isLeader ? { background: "rgba(165,136,89,0.08)" } : undefined}
+          >
+            {isLeader && (
+              <span
+                className="absolute left-0 top-0 bottom-0"
+                style={{ width: 3, background: "var(--color-gold)" }}
+              />
+            )}
             <button
               onClick={() => setExpanded(isOpen ? null : row.team_id)}
               className="w-full text-left"
             >
               <CardContent className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-2xl w-8 text-center text-[var(--color-navy)]">
-                    {row.rank}
+                  <span className="font-mono text-xl w-9 text-center text-[var(--color-navy)]">
+                    {toRoman(row.rank)}
                   </span>
                   <span
                     className="inline-block w-3 h-3 rounded-full shrink-0"
                     style={{ backgroundColor: row.display_color }}
                   />
                   <div>
-                    <div className="font-display text-lg text-[var(--color-navy)]">
+                    <div className="font-display text-[20px] text-[var(--color-navy)]">
                       {row.name}
                     </div>
                     {captain && (
-                      <div className="text-xs font-ui text-neutral-600">
-                        Captain: {captain.name}
+                      <div className="text-[11px] font-body-serif italic text-[var(--color-stone)]">
+                        Captain · {captain.name}
                       </div>
                     )}
-                    <div className="text-[11px] font-mono text-neutral-500 tabular-nums mt-0.5">
-                      D1: {row.day1_points} · D2: {row.day2_points} · D3:{" "}
+                    <div className="text-[11px] font-mono text-[var(--color-stone)] tabular-nums mt-0.5">
+                      D·I {row.day1_points} · D·II {row.day2_points} · D·III{" "}
                       {row.day3_points || "—"}
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="font-display text-3xl text-[var(--color-navy)] tabular-nums">
+                  <span className="font-mono text-3xl text-[var(--color-navy)] tabular-nums">
                     {row.total_points}
                   </span>
                   {isOpen ? (
-                    <ChevronUp size={16} className="text-neutral-500" />
+                    <ChevronUp size={16} className="text-[var(--color-stone)]" />
                   ) : (
-                    <ChevronDown size={16} className="text-neutral-500" />
+                    <ChevronDown size={16} className="text-[var(--color-stone)]" />
                   )}
                 </div>
               </CardContent>

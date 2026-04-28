@@ -2,10 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 
 type PlayerOption = {
   id: string;
@@ -42,14 +38,14 @@ export function LandingSignInForm({ players }: { players: PlayerOption[] }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-3 text-left">
+    <form onSubmit={onSubmit} className="space-y-4 text-left">
       <div>
-        <Label className="text-[var(--color-cream)]">Who are you?</Label>
-        <Select
-          className="bg-[var(--color-cream)] text-[var(--color-ink)]"
+        <div className="eyebrow-cream mb-1.5">The Field</div>
+        <select
           value={playerId}
           onChange={(e) => setPlayerId(e.target.value)}
           required
+          className="w-full bg-[var(--color-cream)] text-[var(--color-ink)] font-body-serif italic text-base px-3.5 py-3 focus:outline-none focus:ring-1 focus:ring-[var(--color-gold)]"
         >
           <option value="">Select your name…</option>
           {players.map((p) => (
@@ -57,29 +53,27 @@ export function LandingSignInForm({ players }: { players: PlayerOption[] }) {
               {p.name} — {p.team} · HCP {p.handicap}
             </option>
           ))}
-        </Select>
+        </select>
       </div>
       <div>
-        <Label className="text-[var(--color-cream)]">Trip passcode</Label>
-        <Input
+        <div className="eyebrow-cream mb-1.5">Trip Passcode</div>
+        <input
           type="password"
           required
           autoComplete="current-password"
-          placeholder="Ask Reid if you forgot"
+          placeholder="······"
           value={passcode}
           onChange={(e) => setPasscode(e.target.value)}
-          className="bg-[var(--color-cream)] text-[var(--color-ink)]"
+          className="w-full bg-[var(--color-cream)] text-[var(--color-ink)] font-body-serif italic text-base px-3.5 py-3 placeholder:text-[var(--color-stone)] focus:outline-none focus:ring-1 focus:ring-[var(--color-gold)]"
         />
       </div>
-      <Button
+      <button
         type="submit"
-        size="lg"
-        variant="primary"
-        className="w-full"
         disabled={status === "signing"}
+        className="w-full bg-[var(--color-gold)] text-[var(--color-navy)] font-ui font-semibold uppercase text-[11px] tracking-[0.3em] py-3.5 hover:bg-[var(--color-gold-light)] disabled:opacity-60"
       >
         {status === "signing" ? "Signing in…" : "Sign in"}
-      </Button>
+      </button>
       {error && (
         <div className="text-xs text-[var(--color-gold-light)] text-center">{error}</div>
       )}

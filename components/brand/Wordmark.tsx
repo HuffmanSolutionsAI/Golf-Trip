@@ -1,70 +1,25 @@
-// Wordmark.tsx — "THE / Neal & Pam / INVITATIONAL" stacked.
+// Backwards-compatible facade for the brand lockup. Old call sites use
+// variant="dark" | "light"; new ones use the Lockup directly with "cream" | "navy".
+import { Lockup, LockupInline } from "./Lockup";
 
-type WordmarkProps = {
-  variant?: "dark" | "light";
-  className?: string;
-};
+type LegacyVariant = "dark" | "light";
 
-export function Wordmark({ variant = "dark", className }: WordmarkProps) {
-  const mainColor = variant === "dark" ? "#1A2E3B" : "#F3ECD8";
-  const gold = "#B08840";
-
-  return (
-    <div
-      className={`flex flex-col items-center gap-1 ${className ?? ""}`}
-      aria-label="The Neal & Pam Invitational"
-    >
-      <div className="w-full border-t" style={{ borderColor: gold, borderWidth: 0.5 }} />
-      <span
-        className="font-ui"
-        style={{
-          color: gold,
-          fontSize: "0.625rem",
-          letterSpacing: "0.4em",
-          textTransform: "uppercase",
-          fontWeight: 500,
-        }}
-      >
-        THE
-      </span>
-      <span
-        className="font-display italic"
-        style={{ color: mainColor, fontSize: "1.75rem", lineHeight: 1, fontWeight: 500 }}
-      >
-        Neal &amp; Pam
-      </span>
-      <span
-        className="font-ui"
-        style={{
-          color: mainColor,
-          fontSize: "0.6875rem",
-          letterSpacing: "0.4em",
-          textTransform: "uppercase",
-          fontWeight: 500,
-        }}
-      >
-        INVITATIONAL
-      </span>
-      <div className="w-full border-t" style={{ borderColor: gold, borderWidth: 0.5 }} />
-    </div>
-  );
+function mapVariant(v?: LegacyVariant): "cream" | "navy" {
+  // "dark" historically meant the mark renders in dark ink (navy) on a light field.
+  // "light" historically meant the mark renders in light ink (cream) on a dark field.
+  return v === "dark" ? "navy" : "cream";
 }
 
-// Compact inline variant used in the top nav.
-export function WordmarkInline({ variant = "light" }: { variant?: "dark" | "light" }) {
-  const color = variant === "dark" ? "#1A2E3B" : "#F3ECD8";
-  return (
-    <span
-      className="font-ui"
-      style={{
-        color,
-        fontSize: "0.6875rem",
-        letterSpacing: "0.4em",
-        textTransform: "uppercase",
-        fontWeight: 600,
-      }}
-    >
-      THE INVITATIONAL
-    </span>
-  );
+export function Wordmark({
+  variant = "light",
+  className,
+}: {
+  variant?: LegacyVariant;
+  className?: string;
+}) {
+  return <Lockup variant={mapVariant(variant)} className={className} width={288} />;
+}
+
+export function WordmarkInline({ variant = "light" }: { variant?: LegacyVariant }) {
+  return <LockupInline variant={mapVariant(variant)} />;
 }

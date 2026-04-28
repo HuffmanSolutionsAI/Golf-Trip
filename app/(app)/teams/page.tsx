@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listPlayers } from "@/lib/repo/players";
 import { computeLeaderboard } from "@/lib/repo/standings";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHero } from "@/components/layout/PageHero";
 import type { PlayerRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +17,14 @@ export default function TeamsIndexPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
-      <div>
-        <div className="eyebrow">Teams</div>
-        <h1 className="font-display text-3xl text-[var(--color-navy)]">Five teams</h1>
-      </div>
+    <div className="paper-grain">
+      <PageHero
+        eyebrow="THE FIELD"
+        title="Five teams"
+        subtitle="Twenty members. By invitation only."
+      />
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+      <div className="mx-auto max-w-3xl px-4 py-4 grid gap-3 grid-cols-1 sm:grid-cols-2">
         {lb.map((team) => {
           const members = byTeam.get(team.team_id) ?? [];
           return (

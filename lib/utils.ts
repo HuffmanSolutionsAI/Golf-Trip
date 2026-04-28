@@ -22,6 +22,26 @@ export function formatRoundDate(d: string): string {
   return `${dow} ${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+// Roman numerals, used everywhere in display copy ("Day II", "Match V").
+const ROMAN: [number, string][] = [
+  [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+  [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+  [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"],
+];
+
+export function toRoman(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return String(n);
+  let out = "";
+  let v = Math.floor(n);
+  for (const [val, sym] of ROMAN) {
+    while (v >= val) {
+      out += sym;
+      v -= val;
+    }
+  }
+  return out;
+}
+
 export const TEAM_PALETTE: Record<string, { bg: string; ink: string }> = {
   "#A83232": { bg: "#A83232", ink: "#F3ECD8" },
   "#2F5233": { bg: "#2F5233", ink: "#F3ECD8" },

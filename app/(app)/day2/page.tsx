@@ -6,7 +6,7 @@ import {
 } from "@/lib/repo/scores";
 import { listPlayers, listTeams } from "@/lib/repo/players";
 import { computeDay2PoolRankRows } from "@/lib/repo/standings";
-import { Card, CardContent } from "@/components/ui/card";
+import { PageHero } from "@/components/layout/PageHero";
 
 export const dynamic = "force-dynamic";
 
@@ -24,57 +24,74 @@ export default function Day2IndexPage() {
   for (const e of entries) if (e.pool === "AD" || e.pool === "BC") pools[e.pool].push(e);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-      <div>
-        <div className="eyebrow">Day 2 · Talamore</div>
-        <h1 className="font-display text-3xl text-[var(--color-navy)]">
-          2-man scramble · two pools
-        </h1>
-      </div>
+    <div className="paper-grain">
+      <PageHero
+        eyebrow={`DAY II · ${round.course_name.toUpperCase()}`}
+        title="Two-man scramble"
+        subtitle="Pools AD & BC. Pick yours."
+      />
 
-      {(["AD", "BC"] as const).map((pool) => (
-        <div key={pool} className="space-y-2">
-          <div className="eyebrow">Pool {pool}</div>
-          {pools[pool]
-            .map((e) => ({ e, r: rankByEntry.get(e.id) }))
-            .sort((a, b) => (a.r?.rank_in_pool ?? 99) - (b.r?.rank_in_pool ?? 99))
-            .map(({ e, r }) => {
-              const team = teams.get(e.team_id);
-              const names = listParticipantsForEntry(e.id)
-                .map((p) => players.get(p.player_id)?.name)
-                .filter(Boolean)
-                .join(" & ");
-              return (
-                <Link key={e.id} href={`/day2/entries/${e.id}`}>
-                  <Card className="hover:border-[var(--color-gold)] transition-colors">
-                    <CardContent className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-lg w-6 text-center">
-                          {r?.rank_in_pool ?? "—"}
-                        </span>
+      <div className="mx-auto max-w-3xl px-4 pt-2 pb-6">
+        {(["AD", "BC"] as const).map((pool) => (
+          <div key={pool} className="mt-4">
+            <div className="eyebrow">Pool {pool}</div>
+            <div className="rule-gold mt-1.5 mb-1" />
+            {pools[pool]
+              .map((e) => ({ e, r: rankByEntry.get(e.id) }))
+              .sort((a, b) => (a.r?.rank_in_pool ?? 99) - (b.r?.rank_in_pool ?? 99))
+              .map(({ e, r }) => {
+                const team = teams.get(e.team_id);
+                const names = listParticipantsForEntry(e.id)
+                  .map((p) => players.get(p.player_id)?.name)
+                  .filter(Boolean);
+                return (
+                  <Link
+                    key={e.id}
+                    href={`/day2/entries/${e.id}`}
+                    className="grid items-center gap-3 py-3"
+                    style={{
+                      gridTemplateColumns: "20px 1fr 60px 50px",
+                      borderBottom: "1px solid var(--color-rule-cream)",
+                    }}
+                  >
+                    <span className="font-mono text-[13px] text-[var(--color-navy)]">
+                      {r?.rank_in_pool ?? "—"}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
                         <span
-                          className="inline-block w-2 h-2 rounded-full"
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
                           style={{ backgroundColor: team?.display_color }}
                         />
-                        <div>
-                          <div className="font-ui font-semibold">{team?.name}</div>
-                          <div className="text-xs font-body-serif italic text-neutral-600">
-                            {names}
-                          </div>
+                        <span className="font-display text-[16px] text-[var(--color-navy)] truncate">
+                          {names.length > 0 ? names.join(" + ") : team?.name}
+                        </span>
+                      </div>
+                      {names.length > 0 && (
+                        <div className="font-body-serif italic text-[11px] text-[var(--color-stone)] mt-0.5">
+                          {team?.name}
                         </div>
-                      </div>
-                      <div className="font-mono tabular-nums text-sm text-right">
-                        {r
-                          ? `${r.team_raw} · thru ${r.holes_thru} · ${r.points} pt`
-                          : "—"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
+                      )}
+                    </div>
+                    <span className="font-mono text-[14px] text-right text-[var(--color-navy)] tabular-nums">
+                      {r ? r.team_raw : "—"}
+                    </span>
+                    <span className="font-mono text-[11px] text-right text-[var(--color-stone)] tabular-nums">
+                      {r ? `thru ${r.holes_thru}` : "—"}
+                    </span>
+                  </Link>
+                );
+              })}
+          </div>
+        ))}
+
+        <div className="pt-8 text-center">
+          <div className="rule-gold mb-2" style={{ opacity: 0.4 }} />
+          <div className="eyebrow-stone" style={{ fontSize: 8 }}>
+            BEST BALL OF THE PAIR · NET
+          </div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
