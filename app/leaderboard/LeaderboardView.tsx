@@ -204,7 +204,7 @@ function Day1Tab({ rows, round }: { rows: Day1IndividualRow[]; round?: RoundRow 
   const tieMap = countRanks(rows.map((r) => r.rank));
   return (
     <Card>
-      <CourseHeader round={round} format="Singles match play · Net" />
+      <CourseHeader round={round} format="Singles · Net stroke play" />
       <div className="grid grid-cols-[2.5rem_1fr_3.5rem_3rem_5rem] items-center px-3 py-2 border-b border-[var(--color-rule)] text-[10px] font-ui uppercase tracking-[0.2em] text-neutral-500">
         <span>Pos</span>
         <span>Player</span>
@@ -298,7 +298,7 @@ function PoolBoard({
       <CourseHeader round={round} format={`${label} · 2-man scramble`} />
       <div className="grid grid-cols-[2.5rem_1fr_3.5rem_3rem_4rem] items-center px-3 py-2 border-b border-[var(--color-rule)] text-[10px] font-ui uppercase tracking-[0.2em] text-neutral-500">
         <span>Pos</span>
-        <span>Team</span>
+        <span>Pair</span>
         <span className="text-right">Score</span>
         <span className="text-right">Thru</span>
         <span className="text-right">Pts</span>
@@ -319,11 +319,11 @@ function PoolBoard({
               />
               <div className="min-w-0">
                 <div className="font-display text-base text-[var(--color-navy)] truncate">
-                  {r.team_name}
+                  {r.participant_names.length > 0 ? r.participant_names.join(" + ") : r.team_name}
                 </div>
                 {r.participant_names.length > 0 && (
                   <div className="text-[10px] font-ui text-neutral-500 truncate">
-                    {r.participant_names.join(" · ")}
+                    {r.team_name}
                   </div>
                 )}
               </div>
@@ -469,9 +469,9 @@ function formatMatchStatus(r: Day1IndividualRow): string {
     return "Halved";
   }
   if (r.match_status === "in_progress") {
-    if (r.current_holes_up > 0) return `${r.current_holes_up} UP`;
-    if (r.current_holes_up < 0) return `${Math.abs(r.current_holes_up)} DN`;
-    return "AS";
+    if (r.net_diff > 0) return `−${r.net_diff} net`;
+    if (r.net_diff < 0) return `+${Math.abs(r.net_diff)} net`;
+    return "Tied";
   }
   return `vs ${r.opponent_name}`;
 }

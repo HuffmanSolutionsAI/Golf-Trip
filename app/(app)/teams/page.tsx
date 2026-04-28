@@ -45,9 +45,10 @@ export default function TeamsIndexPage() {
                   <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
                     {members.map((p) => (
                       <li key={p.id} className="flex items-center gap-2">
-                        <span className="inline-block w-4 h-4 rounded-full bg-[var(--color-navy)] text-[var(--color-cream)] text-[10px] font-ui font-semibold flex items-center justify-center">
-                          {p.name[0]}
-                        </span>
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: team.display_color }}
+                        />
                         <span>{p.name}</span>
                         <span className="text-xs text-neutral-500 ml-auto">
                           {p.handicap}

@@ -48,8 +48,6 @@ export function MatchScorecard(props: Props) {
 
   useEffect(() => setScores(props.initialScores), [props.initialScores]);
 
-  const strokeHoles = props.state?.stroke_hole_numbers ?? [];
-
   const p1Scores = new Map<number, number>();
   const p2Scores = new Map<number, number>();
   scores.forEach((s) => {
@@ -57,7 +55,6 @@ export function MatchScorecard(props: Props) {
     else if (s.player_id === props.player2.id) p2Scores.set(s.hole_number, s.strokes);
   });
 
-  // Client-side mirror of the view for instant UI (optimistic).
   const live = useMemo(
     () =>
       computeDay1MatchResult(
@@ -66,13 +63,12 @@ export function MatchScorecard(props: Props) {
           p2Id: props.player2.id,
           strokeGiverId: props.match.stroke_giver_id,
           strokesGiven: props.match.strokes_given,
-          strokeHoles,
         },
         p1Scores,
         p2Scores,
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scores, props.match, strokeHoles],
+    [scores, props.match],
   );
 
   const canEnter = props.isAdmin || props.myId === props.player1.id || props.myId === props.player2.id;
@@ -82,7 +78,6 @@ export function MatchScorecard(props: Props) {
   );
 
   async function saveScore(playerId: string, holeNumber: number, strokes: number) {
-    // Optimistic
     const placeholder: HoleScoreRow = {
       id: `optimistic-${playerId}-${holeNumber}`,
       round_id: props.round.id,
@@ -121,15 +116,6 @@ export function MatchScorecard(props: Props) {
     const playerLabel =
       playerId === props.player1.id ? props.player1.name : props.player2.name;
     const notes: string[] = [];
-    if (strokeHoles.includes(holeNumber)) {
-      const strokeFor =
-        props.match.stroke_giver_id === props.player1.id
-          ? props.player1.name
-          : props.match.stroke_giver_id === props.player2.id
-            ? props.player2.name
-            : null;
-      if (strokeFor) notes.push(`Stroke hole · ${strokeFor} gets −1`);
-    }
     if (props.round.is_locked) notes.push("Round is locked — admin only");
     const current =
       playerId === props.player1.id
@@ -164,12 +150,10 @@ export function MatchScorecard(props: Props) {
           <PlayerHeader
             player={props.player1}
             strokes={props.match.stroke_giver_id === props.player1.id ? props.match.strokes_given : 0}
-            totalStrokeHoles={props.match.stroke_giver_id === props.player1.id ? strokeHoles.length : 0}
           />
           <PlayerHeader
             player={props.player2}
             strokes={props.match.stroke_giver_id === props.player2.id ? props.match.strokes_given : 0}
-            totalStrokeHoles={props.match.stroke_giver_id === props.player2.id ? strokeHoles.length : 0}
           />
         </CardContent>
       </Card>
@@ -187,13 +171,9 @@ export function MatchScorecard(props: Props) {
               </div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-neutral-500">Holes up (net)</div>
+              <div className="text-xs text-neutral-500">Net diff</div>
               <div className="font-mono text-lg tabular-nums">
-                {live.currentHolesUp > 0
-                  ? `${props.player1.name} +${live.currentHolesUp}`
-                  : live.currentHolesUp < 0
-                    ? `${props.player2.name} +${-live.currentHolesUp}`
-                    : "All square"}
+                {formatNetDiff(live.netDiff, props.player1.name, props.player2.name, live.holesBothPlayed)}
               </div>
             </div>
             <div className="text-right">
@@ -224,15 +204,12 @@ export function MatchScorecard(props: Props) {
                 <tr>
                   <th className="py-1.5 px-2 text-left text-xs font-ui font-semibold">H</th>
                   <th className="py-1.5 px-2 text-left text-xs font-ui font-semibold">Par</th>
-                  <th className="py-1.5 px-2 text-left text-xs font-ui font-semibold">Hdcp</th>
                   <th className="py-1.5 px-2 text-right text-xs font-ui font-semibold">{props.player1.name}</th>
                   <th className="py-1.5 px-2 text-right text-xs font-ui font-semibold">{props.player2.name}</th>
                 </tr>
               </thead>
               <tbody>
                 {props.holes.map((h) => {
-                  const hasStroke = strokeHoles.includes(h.hole_number);
-                  const giverIsP1 = props.match.stroke_giver_id === props.player1.id;
                   const s1 = p1Scores.get(h.hole_number);
                   const s2 = p2Scores.get(h.hole_number);
                   const isCurrent = h.hole_number === firstEmpty;
@@ -243,24 +220,17 @@ export function MatchScorecard(props: Props) {
                     >
                       <td className="px-2 py-1.5">{h.hole_number}</td>
                       <td className="px-2 py-1.5">{h.par}</td>
-                      <td className="px-2 py-1.5 text-neutral-600">{h.handicap_index ?? "—"}</td>
                       <td
                         className={`px-2 py-1.5 text-right ${canEnter && !props.round.is_locked ? "cursor-pointer hover:bg-[var(--color-cream)]" : ""}`}
                         onClick={() => canEnter && !props.round.is_locked && openHole(props.player1.id, h.hole_number, h.par)}
                       >
                         {s1 ?? "·"}
-                        {hasStroke && giverIsP1 && (
-                          <span className="ml-1 text-[var(--color-gold)]">•</span>
-                        )}
                       </td>
                       <td
                         className={`px-2 py-1.5 text-right ${canEnter && !props.round.is_locked ? "cursor-pointer hover:bg-[var(--color-cream)]" : ""}`}
                         onClick={() => canEnter && !props.round.is_locked && openHole(props.player2.id, h.hole_number, h.par)}
                       >
                         {s2 ?? "·"}
-                        {hasStroke && !giverIsP1 && props.match.stroke_giver_id && (
-                          <span className="ml-1 text-[var(--color-gold)]">•</span>
-                        )}
                       </td>
                     </tr>
                   );
@@ -280,7 +250,6 @@ export function MatchScorecard(props: Props) {
             onClick={() => {
               const h = props.holes.find((x) => x.hole_number === firstEmpty);
               if (!h) return;
-              // Default to whichever player is missing.
               const missingId = !p1Scores.has(firstEmpty)
                 ? props.player1.id
                 : props.player2.id;
@@ -311,11 +280,9 @@ export function MatchScorecard(props: Props) {
 function PlayerHeader({
   player,
   strokes,
-  totalStrokeHoles,
 }: {
   player: PlayerRow & { team: TeamRow };
   strokes: number;
-  totalStrokeHoles: number;
 }) {
   return (
     <div>
@@ -327,12 +294,15 @@ function PlayerHeader({
         {player.team.name}
       </div>
       <div className="text-xs font-ui text-neutral-600 mt-0.5">
-        {strokes === 0
-          ? "gets 0"
-          : totalStrokeHoles === 0
-            ? `gets ${strokes} (pending hole hdcp data)`
-            : `gets ${strokes} strokes`}
+        {strokes === 0 ? "gets 0" : `gets ${strokes} strokes`}
       </div>
     </div>
   );
+}
+
+function formatNetDiff(diff: number, p1Name: string, p2Name: string, holesBothPlayed: number): string {
+  if (holesBothPlayed === 0) return "—";
+  if (diff === 0) return "Tied";
+  if (diff > 0) return `${p1Name} −${diff}`;
+  return `${p2Name} −${Math.abs(diff)}`;
 }

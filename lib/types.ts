@@ -132,7 +132,6 @@ export type Day1MatchStateRow = {
   player2_id: string;
   stroke_giver_id: string | null;
   strokes_given: number;
-  stroke_hole_numbers: number[];
   p1_total_gross: number;
   p2_total_gross: number;
   p1_total_net: number;
@@ -140,7 +139,7 @@ export type Day1MatchStateRow = {
   p1_holes: number;
   p2_holes: number;
   holes_both_played: number;
-  current_holes_up: number;
+  net_diff: number; // signed: + = p1 ahead (lower net), - = p2 ahead
   status: "pending" | "in_progress" | "final";
   winner_player_id: string | null;
   p1_team_points: number;
@@ -194,7 +193,7 @@ export type Day1IndividualRow = {
   score_to_par: number;
   holes_thru: number;
   match_status: "pending" | "in_progress" | "final";
-  current_holes_up: number; // signed from this player's perspective
+  net_diff: number; // signed from this player's perspective (+ = ahead in net)
   is_winner: boolean | null;
   rank: number;
 };

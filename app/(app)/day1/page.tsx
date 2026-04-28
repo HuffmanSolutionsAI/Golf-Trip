@@ -18,7 +18,7 @@ export default function Day1IndexPage() {
       <div>
         <div className="eyebrow">Day 1</div>
         <h1 className="font-display text-3xl text-[var(--color-navy)]">
-          Singles · Ten matches
+          Singles · Net stroke play
         </h1>
       </div>
 

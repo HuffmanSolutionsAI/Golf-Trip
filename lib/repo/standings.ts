@@ -7,7 +7,6 @@ import {
 } from "./scores";
 import { listPlayers, listTeams } from "./players";
 import { listRounds, listAllHoles } from "./rounds";
-import { computeStrokeAllocation } from "@/lib/scoring/handicaps";
 import { computeDay1MatchResult } from "@/lib/scoring/day1";
 import { computeDay2PoolRanks } from "@/lib/scoring/day2";
 import { computeDay3Standings } from "@/lib/scoring/day3";
@@ -56,12 +55,8 @@ export function computeDay1MatchStates(): Day1MatchStateRow[] {
   const s = snapshot();
   const day1 = s.rounds.find((r) => r.day === 1);
   if (!day1) return [];
-  const day1Holes = s.holes.filter((h) => h.round_id === day1.id);
   const out: Day1MatchStateRow[] = [];
   for (const m of s.matches) {
-    const p1 = s.players.find((p) => p.id === m.player1_id)!;
-    const p2 = s.players.find((p) => p.id === m.player2_id)!;
-    const alloc = computeStrokeAllocation(p1, p2, day1Holes);
     const p1Scores = scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === m.player1_id);
     const p2Scores = scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === m.player2_id);
     const res = computeDay1MatchResult(
@@ -70,7 +65,6 @@ export function computeDay1MatchStates(): Day1MatchStateRow[] {
         p2Id: m.player2_id,
         strokeGiverId: m.stroke_giver_id,
         strokesGiven: m.strokes_given,
-        strokeHoles: alloc.strokeHoles,
       },
       p1Scores,
       p2Scores,
@@ -83,7 +77,6 @@ export function computeDay1MatchStates(): Day1MatchStateRow[] {
       player2_id: m.player2_id,
       stroke_giver_id: m.stroke_giver_id,
       strokes_given: m.strokes_given,
-      stroke_hole_numbers: alloc.strokeHoles,
       p1_total_gross: res.p1TotalGross,
       p2_total_gross: res.p2TotalGross,
       p1_total_net: res.p1TotalNet ?? 0,
@@ -91,7 +84,7 @@ export function computeDay1MatchStates(): Day1MatchStateRow[] {
       p1_holes: res.p1HolesPlayed,
       p2_holes: res.p2HolesPlayed,
       holes_both_played: res.holesBothPlayed,
-      current_holes_up: res.currentHolesUp,
+      net_diff: res.netDiff,
       status: res.status,
       winner_player_id: res.winnerId,
       p1_team_points: res.p1TeamPoints,
@@ -219,7 +212,6 @@ export function computeDay1IndividualLeaderboard(): Day1IndividualRow[] {
     const p1 = players.get(m.player1_id);
     const p2 = players.get(m.player2_id);
     if (!p1 || !p2) continue;
-    const alloc = computeStrokeAllocation(p1, p2, day1Holes);
     const p1Scores = scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === p1.id);
     const p2Scores = scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === p2.id);
     const res = computeDay1MatchResult(
@@ -228,7 +220,6 @@ export function computeDay1IndividualLeaderboard(): Day1IndividualRow[] {
         p2Id: p2.id,
         strokeGiverId: m.stroke_giver_id,
         strokesGiven: m.strokes_given,
-        strokeHoles: alloc.strokeHoles,
       },
       p1Scores,
       p2Scores,
@@ -255,7 +246,7 @@ export function computeDay1IndividualLeaderboard(): Day1IndividualRow[] {
       score_to_par: res.p1TotalGross - p1ParThru,
       holes_thru: res.p1HolesPlayed,
       match_status: res.status,
-      current_holes_up: res.currentHolesUp,
+      net_diff: res.netDiff,
       is_winner: res.status === "final" ? res.winnerId === p1.id : null,
     });
     rows.push({
@@ -275,7 +266,7 @@ export function computeDay1IndividualLeaderboard(): Day1IndividualRow[] {
       score_to_par: res.p2TotalGross - p2ParThru,
       holes_thru: res.p2HolesPlayed,
       match_status: res.status,
-      current_holes_up: -res.currentHolesUp,
+      net_diff: -res.netDiff,
       is_winner: res.status === "final" ? res.winnerId === p2.id : null,
     });
   }
@@ -375,18 +366,15 @@ export function computeLeaderboard(): LeaderboardRow[] {
   s.teams.forEach((t) => teamPoints.set(t.id, { d1: 0, d2: 0, d3: 0 }));
 
   // Day 1
-  const day1Holes = s.holes.filter((h) => s.rounds.find((r) => r.day === 1)?.id === h.round_id);
   for (const m of s.matches) {
     const p1 = s.players.find((p) => p.id === m.player1_id)!;
     const p2 = s.players.find((p) => p.id === m.player2_id)!;
-    const alloc = computeStrokeAllocation(p1, p2, day1Holes);
     const res = computeDay1MatchResult(
       {
         p1Id: p1.id,
         p2Id: p2.id,
         strokeGiverId: m.stroke_giver_id,
         strokesGiven: m.strokes_given,
-        strokeHoles: alloc.strokeHoles,
       },
       scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === p1.id),
       scoreMap(s.scores, (x) => x.round_id === m.round_id && x.player_id === p2.id),

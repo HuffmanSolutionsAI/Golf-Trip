@@ -42,7 +42,6 @@ describe("computeTeamPoints integration — single Day 1 final", () => {
             p2Id: "p2",
             strokeGiverId: null,
             strokesGiven: 0,
-            strokeHoles: [],
           },
           p1Scores,
           p2Scores,
