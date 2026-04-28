@@ -6,6 +6,7 @@ import {
 } from "@/lib/repo/scores";
 import { listPlayers, listTeams } from "@/lib/repo/players";
 import { computeDay3StandingRows } from "@/lib/repo/standings";
+import { listTeeGroupsWithMembers } from "@/lib/repo/teeGroups";
 import { roundHandicap } from "@/lib/scoring/handicaps";
 import { formatTeeTime } from "@/lib/utils";
 
@@ -28,6 +29,14 @@ export default function Day3IndexPage() {
       (standByEntry.get(a.id)?.rank ?? 99) -
       (standByEntry.get(b.id)?.rank ?? 99),
   );
+
+  const groups = listTeeGroupsWithMembers().filter(
+    (g) => g.round_id === round.id,
+  );
+  const groupByEntry = new Map<string, (typeof groups)[number]>();
+  for (const g of groups) {
+    for (const eid of g.scramble_entry_ids) groupByEntry.set(eid, g);
+  }
 
   return (
     <div>
@@ -127,17 +136,41 @@ export default function Day3IndexPage() {
                       {team?.name}
                     </span>
                   </div>
-                  <span
-                    className="font-mono"
-                    style={{
-                      fontSize: 14,
-                      color: "var(--color-stone)",
-                    }}
-                  >
-                    {standing && standing.holes_thru > 0
-                      ? `${standing.team_raw} · thru ${standing.holes_thru}`
-                      : "—"}
-                  </span>
+                  <div className="text-right">
+                    <div
+                      className="font-mono"
+                      style={{
+                        fontSize: 14,
+                        color: "var(--color-stone)",
+                      }}
+                    >
+                      {standing && standing.holes_thru > 0
+                        ? `${standing.team_raw} · thru ${standing.holes_thru}`
+                        : "—"}
+                    </div>
+                    {(() => {
+                      const g = groupByEntry.get(e.id);
+                      const scorer = g?.scorer_player_id
+                        ? players.get(g.scorer_player_id)
+                        : null;
+                      const time = g?.scheduled_time
+                        ? formatTeeTime(g.scheduled_time)
+                        : null;
+                      return (
+                        <div
+                          className="font-ui uppercase mt-1"
+                          style={{
+                            fontSize: 9,
+                            letterSpacing: "0.25em",
+                            color: "var(--color-stone)",
+                          }}
+                        >
+                          {time ? `${time} · ` : ""}Scored by{" "}
+                          {scorer?.name ?? "—"}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div
                   className="grid grid-cols-2 md:grid-cols-4 gap-2 ml-9"

@@ -29,6 +29,8 @@ type Props = {
   initialScores: HoleScoreRow[];
   myId: string | null;
   isAdmin: boolean;
+  scorerId: string | null;
+  scorerName: string | null;
 };
 
 export function MatchScorecard(props: Props) {
@@ -70,7 +72,9 @@ export function MatchScorecard(props: Props) {
     [scores, props.match],
   );
 
-  const canEnter = props.isAdmin || props.myId === props.player1.id || props.myId === props.player2.id;
+  const canEnter =
+    props.isAdmin ||
+    (!!props.scorerId && props.myId === props.scorerId);
 
   const firstEmpty = Array.from({ length: 18 }, (_, i) => i + 1).find(
     (h) => !p1Scores.has(h) || !p2Scores.has(h),
@@ -183,6 +187,20 @@ export function MatchScorecard(props: Props) {
               MATCH {matchRoman} · DAY I · {props.round.course_name.toUpperCase()}
             </span>
           </Link>
+          {props.scorerName && (
+            <div
+              className="font-ui uppercase mt-2"
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.28em",
+                color: canEnter ? "var(--color-gold)" : "var(--color-stone)",
+                fontWeight: 500,
+              }}
+            >
+              Scored by {props.scorerName}
+              {!canEnter ? " · read only" : ""}
+            </div>
+          )}
           <div
             className="grid items-center gap-4 mt-5"
             style={{ gridTemplateColumns: "1fr auto 1fr" }}

@@ -29,6 +29,10 @@ function init(db: Database.Database) {
   if (n === 0) {
     db.exec(readSql("seed.sql"));
   }
+
+  // Idempotent bootstrap — runs every boot so existing DBs pick up additive
+  // data (tee groups + default scorer assignments) without db:reset.
+  db.exec(readSql("tee-groups-seed.sql"));
 }
 
 export function getDb(): Database.Database {

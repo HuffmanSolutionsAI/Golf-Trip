@@ -162,3 +162,35 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS sessions_player_idx ON sessions (player_id);
+
+-- ---------------------------------------------------------------------------
+-- tee_groups — foursomes that go off together at a tee time. Each group
+-- has a designated scorer who is the only non-admin allowed to enter scores
+-- for the matches/scramble entries owned by the group. Day 1 groups own 2
+-- matches each; Day 2 groups own 2 scramble entries (AD + BC pair); Day 3
+-- groups own 1 entry (the team's 4-man scramble).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tee_groups (
+  id               TEXT PRIMARY KEY,
+  round_id         TEXT NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
+  group_number     INTEGER NOT NULL,
+  scheduled_time   TEXT,                                  -- 'HH:MM:SS'
+  scorer_player_id TEXT REFERENCES players(id),
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(round_id, group_number)
+);
+
+CREATE TABLE IF NOT EXISTS tee_group_matches (
+  tee_group_id TEXT NOT NULL REFERENCES tee_groups(id) ON DELETE CASCADE,
+  match_id     TEXT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  PRIMARY KEY (tee_group_id, match_id),
+  UNIQUE (match_id)
+);
+
+CREATE TABLE IF NOT EXISTS tee_group_entries (
+  tee_group_id      TEXT NOT NULL REFERENCES tee_groups(id) ON DELETE CASCADE,
+  scramble_entry_id TEXT NOT NULL REFERENCES scramble_entries(id) ON DELETE CASCADE,
+  PRIMARY KEY (tee_group_id, scramble_entry_id),
+  UNIQUE (scramble_entry_id)
+);

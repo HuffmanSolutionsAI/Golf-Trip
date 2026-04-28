@@ -7,6 +7,8 @@ import {
 import { getRound, listHoles } from "@/lib/repo/rounds";
 import { getPlayerWithTeam } from "@/lib/repo/players";
 import { getDay1MatchState } from "@/lib/repo/standings";
+import { getTeeGroupForMatch } from "@/lib/repo/teeGroups";
+import { listPlayers } from "@/lib/repo/players";
 import { MatchScorecard } from "./MatchScorecard";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +34,11 @@ export default async function Day1MatchPage({
     ...listScoresForPlayerOnRound(match.player2_id, match.round_id),
   ];
 
+  const teeGroup = getTeeGroupForMatch(match.id);
+  const scorer = teeGroup?.scorer_player_id
+    ? listPlayers().find((p) => p.id === teeGroup.scorer_player_id) ?? null
+    : null;
+
   return (
     <MatchScorecard
       match={match}
@@ -43,6 +50,8 @@ export default async function Day1MatchPage({
       initialScores={scores}
       myId={me?.id ?? null}
       isAdmin={!!me?.is_admin}
+      scorerId={teeGroup?.scorer_player_id ?? null}
+      scorerName={scorer?.name ?? null}
     />
   );
 }

@@ -8,6 +8,7 @@ import {
 import { getRound, listHoles } from "@/lib/repo/rounds";
 import { getTeam, listPlayers } from "@/lib/repo/players";
 import { computeDay2PoolRankRows } from "@/lib/repo/standings";
+import { getTeeGroupForEntry } from "@/lib/repo/teeGroups";
 import { ScrambleScorecard } from "@/components/scoring/ScrambleScorecard";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,14 @@ export default async function Day2EntryPage({
   const poolRanks = entry.pool
     ? computeDay2PoolRankRows().filter((r) => r.pool === entry.pool)
     : [];
-  const canEnter = !!me && (!!me.is_admin || partPlayerIds.has(me.id));
+  const teeGroup = getTeeGroupForEntry(id);
+  const scorer = teeGroup?.scorer_player_id
+    ? allPlayers.find((p) => p.id === teeGroup.scorer_player_id) ?? null
+    : null;
+  const canEnter =
+    !!me &&
+    (!!me.is_admin ||
+      (!!teeGroup?.scorer_player_id && me.id === teeGroup.scorer_player_id));
 
   return (
     <ScrambleScorecard
@@ -49,6 +57,7 @@ export default async function Day2EntryPage({
       canEnter={canEnter}
       allPlayers={allPlayers}
       roundIsLocked={!!round.is_locked}
+      scorerName={scorer?.name ?? null}
     />
   );
 }

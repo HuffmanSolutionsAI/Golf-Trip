@@ -30,6 +30,7 @@ type Props = {
   canEnter: boolean;
   roundIsLocked: boolean;
   allPlayers?: PlayerRow[];
+  scorerName?: string | null;
 };
 
 export function ScrambleScorecard(props: Props) {
@@ -126,17 +127,33 @@ export function ScrambleScorecard(props: Props) {
 
       <Card>
         <CardContent>
-          <div className="flex items-center gap-3">
-            <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: props.team.display_color }} />
-            <div>
-              <div className="font-display text-xl text-[var(--color-navy)]">
-                {props.team.name}
-                {props.pool ? ` · Pool ${props.pool}` : ""}
-              </div>
-              <div className="font-body-serif italic text-neutral-700 text-sm">
-                {props.participantNames.join(" · ")}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: props.team.display_color }} />
+              <div className="min-w-0">
+                <div className="font-display text-xl text-[var(--color-navy)] truncate">
+                  {props.team.name}
+                  {props.pool ? ` · Pool ${props.pool}` : ""}
+                </div>
+                <div className="font-body-serif italic text-neutral-700 text-sm truncate">
+                  {props.participantNames.join(" · ")}
+                </div>
               </div>
             </div>
+            {props.scorerName && (
+              <span
+                className="font-ui uppercase shrink-0"
+                style={{
+                  fontSize: 9,
+                  letterSpacing: "0.28em",
+                  color: props.canEnter ? "var(--color-gold)" : "var(--color-stone)",
+                  fontWeight: 500,
+                }}
+              >
+                Scored by {props.scorerName}
+                {!props.canEnter ? " · read only" : ""}
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -15,6 +15,15 @@ import type {
   TeamRow,
 } from "@/lib/types";
 
+type TeeGroupAdminRow = {
+  id: string;
+  round_id: string;
+  group_number: number;
+  scheduled_time: string | null;
+  scorer_player_id: string | null;
+  player_names: string[];
+};
+
 type Props = {
   players: (PlayerRow & { team: { name: string } | null })[];
   teams: TeamRow[];
@@ -22,9 +31,17 @@ type Props = {
   holes: HoleRow[];
   entries: ScrambleEntryRow[];
   audit: AuditLogRow[];
+  teeGroups: TeeGroupAdminRow[];
 };
 
-const TABS = ["Players", "Holes", "Rounds", "Tiebreak", "Audit"] as const;
+const TABS = [
+  "Players",
+  "Tee Times",
+  "Holes",
+  "Rounds",
+  "Tiebreak",
+  "Audit",
+] as const;
 type Tab = (typeof TABS)[number];
 
 export function AdminTabs(props: Props) {
@@ -54,12 +71,154 @@ export function AdminTabs(props: Props) {
       </div>
 
       {tab === "Players" && <PlayersTab players={props.players} />}
+      {tab === "Tee Times" && (
+        <TeeGroupsTab
+          groups={props.teeGroups}
+          rounds={props.rounds}
+          players={props.players}
+        />
+      )}
       {tab === "Holes" && <HolesTab rounds={props.rounds} holes={props.holes} />}
       {tab === "Rounds" && <RoundsTab rounds={props.rounds} />}
       {tab === "Tiebreak" && <TiebreakTab rounds={props.rounds} entries={props.entries} teams={props.teams} />}
       {tab === "Audit" && <AuditTab rows={props.audit} />}
     </div>
   );
+}
+
+function TeeGroupsTab({
+  groups,
+  rounds,
+  players,
+}: {
+  groups: TeeGroupAdminRow[];
+  rounds: RoundRow[];
+  players: (PlayerRow & { team: { name: string } | null })[];
+}) {
+  const router = useRouter();
+  const [saving, setSaving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const playerOptions = [...players].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  const groupsByRound = new Map<string, TeeGroupAdminRow[]>();
+  for (const g of groups) {
+    const arr = groupsByRound.get(g.round_id) ?? [];
+    arr.push(g);
+    groupsByRound.set(g.round_id, arr);
+  }
+
+  async function setScorer(teeGroupId: string, scorerPlayerId: string) {
+    setSaving(teeGroupId);
+    setError(null);
+    const res = await fetch("/api/admin/tee-group-scorer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        teeGroupId,
+        scorerPlayerId: scorerPlayerId || null,
+      }),
+    });
+    setSaving(null);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      setError(body.error ?? "Save failed.");
+      return;
+    }
+    router.refresh();
+  }
+
+  return (
+    <div className="space-y-6">
+      {rounds.map((r) => {
+        const groupsForRound = (groupsByRound.get(r.id) ?? []).sort(
+          (a, b) => a.group_number - b.group_number,
+        );
+        if (groupsForRound.length === 0) return null;
+        return (
+          <Card key={r.id}>
+            <CardContent>
+              <CardEyebrow>
+                Day {r.day} · {r.course_name}
+              </CardEyebrow>
+              <table className="w-full text-sm mt-3">
+                <thead>
+                  <tr
+                    className="text-left"
+                    style={{
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 10,
+                      letterSpacing: "0.22em",
+                      color: "var(--color-stone)",
+                      fontWeight: 500,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    <th className="py-2 pr-2">Tee</th>
+                    <th className="py-2 pr-2">Time</th>
+                    <th className="py-2 pr-2">Players</th>
+                    <th className="py-2">Scorer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupsForRound.map((g) => (
+                    <tr
+                      key={g.id}
+                      style={{
+                        borderTop: "1px solid var(--color-rule-cream)",
+                      }}
+                    >
+                      <td className="py-3 pr-2 font-mono text-[var(--color-gold)]">
+                        {romanize(g.group_number)}
+                      </td>
+                      <td className="py-3 pr-2 font-mono text-[var(--color-stone)]">
+                        {g.scheduled_time
+                          ? formatTeeClock(g.scheduled_time)
+                          : "—"}
+                      </td>
+                      <td className="py-3 pr-2 font-body-serif italic text-[var(--color-ink)]">
+                        {g.player_names.join(" · ")}
+                      </td>
+                      <td className="py-3">
+                        <select
+                          value={g.scorer_player_id ?? ""}
+                          disabled={saving === g.id}
+                          onChange={(e) => setScorer(g.id, e.target.value)}
+                          className="bg-[var(--color-paper)] border border-[var(--color-rule)] px-2 py-1 text-sm font-ui"
+                        >
+                          <option value="">— None —</option>
+                          {playerOptions.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        );
+      })}
+      {error && (
+        <div className="text-sm text-[var(--color-oxblood)]">{error}</div>
+      )}
+    </div>
+  );
+}
+
+function romanize(n: number): string {
+  return ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][n - 1] ?? `${n}`;
+}
+
+function formatTeeClock(t: string): string {
+  const [hStr, mStr] = t.split(":");
+  const h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${mStr} ${suffix}`;
 }
 
 function PlayersTab({

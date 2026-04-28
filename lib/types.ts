@@ -108,6 +108,26 @@ export type SessionRow = {
   expires_at: string;
 };
 
+export type TeeGroupRow = {
+  id: string;
+  round_id: string;
+  group_number: number;
+  scheduled_time: string | null;
+  scorer_player_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TeeGroupMemberRow = {
+  tee_group_id: string;
+  match_id: string;
+};
+
+export type TeeGroupEntryRow = {
+  tee_group_id: string;
+  scramble_entry_id: string;
+};
+
 // ---- Derived (TS-computed) shapes ----
 
 export type LeaderboardRow = {

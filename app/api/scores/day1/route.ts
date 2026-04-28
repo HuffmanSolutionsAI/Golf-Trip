@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSession } from "@/lib/server/requireAdmin";
 import { getMatch, upsertPlayerScore } from "@/lib/repo/scores";
+import { getTeeGroupForMatch } from "@/lib/repo/teeGroups";
 import { getDb } from "@/lib/db";
 import { emitChange } from "@/lib/events";
 import { recordAudit } from "@/lib/repo/audit";
@@ -35,14 +36,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Player not in match." }, { status: 400 });
   }
 
-  // Permissions: either player in the match, or admin.
+  // Permissions: only the designated scorer of this match's tee group, or admin.
   const db = getDb();
-  if (
-    !gate.isAdmin &&
-    gate.playerId !== match.player1_id &&
-    gate.playerId !== match.player2_id
-  ) {
-    return NextResponse.json({ error: "Not a participant." }, { status: 403 });
+  if (!gate.isAdmin) {
+    const group = getTeeGroupForMatch(matchId);
+    if (!group?.scorer_player_id || group.scorer_player_id !== gate.playerId) {
+      return NextResponse.json(
+        { error: "Only the designated scorer can enter this match's scores." },
+        { status: 403 },
+      );
+    }
   }
 
   const round = db.prepare("SELECT * FROM rounds WHERE id = ?").get(match.round_id) as RoundRow | undefined;

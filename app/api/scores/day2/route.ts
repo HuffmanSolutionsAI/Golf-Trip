@@ -3,9 +3,9 @@ import { z } from "zod";
 import { requireSession } from "@/lib/server/requireAdmin";
 import {
   getScrambleEntry,
-  listParticipantsForEntry,
   upsertScrambleScore,
 } from "@/lib/repo/scores";
+import { getTeeGroupForEntry } from "@/lib/repo/teeGroups";
 import { getDb } from "@/lib/db";
 import { emitChange } from "@/lib/events";
 import { recordAudit } from "@/lib/repo/audit";
@@ -31,10 +31,14 @@ export async function POST(req: Request) {
   const entry = getScrambleEntry(parsed.data.scrambleEntryId);
   if (!entry) return NextResponse.json({ error: "Entry not found." }, { status: 404 });
 
-  const participants = listParticipantsForEntry(entry.id);
-  const isParticipant = participants.some((p) => p.player_id === gate.playerId);
-  if (!gate.isAdmin && !isParticipant) {
-    return NextResponse.json({ error: "Not a participant." }, { status: 403 });
+  if (!gate.isAdmin) {
+    const group = getTeeGroupForEntry(entry.id);
+    if (!group?.scorer_player_id || group.scorer_player_id !== gate.playerId) {
+      return NextResponse.json(
+        { error: "Only the designated scorer can enter this group's scores." },
+        { status: 403 },
+      );
+    }
   }
 
   const db = getDb();
