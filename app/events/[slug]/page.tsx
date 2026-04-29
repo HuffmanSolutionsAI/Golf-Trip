@@ -119,8 +119,9 @@ export default async function EventHomePage({
             Schedule
           </div>
           {rounds.map((r) => (
-            <div
+            <Link
               key={r.id}
+              href={`/events/${slug}/day/${r.day}`}
               className="grid items-baseline gap-3 py-4"
               style={{
                 gridTemplateColumns: "auto minmax(0,1fr) auto",
@@ -154,7 +155,7 @@ export default async function EventHomePage({
               >
                 {r.date}
               </span>
-            </div>
+            </Link>
           ))}
         </div>
       </div>

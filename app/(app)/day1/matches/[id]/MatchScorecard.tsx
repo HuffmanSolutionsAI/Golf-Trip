@@ -31,6 +31,7 @@ type Props = {
   isAdmin: boolean;
   scorerId: string | null;
   scorerName: string | null;
+  eventId?: string;
 };
 
 export function MatchScorecard(props: Props) {
@@ -45,7 +46,7 @@ export function MatchScorecard(props: Props) {
     notes: string[];
   } | null>(null);
 
-  useLiveRefresh(["hole_scores", "matches"]);
+  useLiveRefresh(["hole_scores", "matches"], props.eventId);
 
   useEffect(() => setScores(props.initialScores), [props.initialScores]);
 

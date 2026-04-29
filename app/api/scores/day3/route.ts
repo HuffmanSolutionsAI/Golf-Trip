@@ -5,6 +5,7 @@ import { getScrambleEntry, upsertScrambleScore } from "@/lib/repo/scores";
 import { getTeeGroupForEntry } from "@/lib/repo/teeGroups";
 import { getDb } from "@/lib/db";
 import { emitChange } from "@/lib/events";
+import { runWithEvent } from "@/lib/repo/events";
 import { recordAudit } from "@/lib/repo/audit";
 import {
   postIfLeaderChanged,
@@ -45,31 +46,33 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Round is locked." }, { status: 403 });
   }
 
-  const { inserted, scoreId } = upsertScrambleScore({
-    roundId: entry.round_id,
-    scrambleEntryId: entry.id,
-    holeNumber: parsed.data.holeNumber,
-    strokes: parsed.data.strokes,
-    enteredBy: gate.playerId,
-  });
-
-  recordAudit({
-    playerId: gate.playerId,
-    action: inserted ? "score.insert" : "score.update",
-    entityType: "hole_score",
-    entityId: scoreId,
-    after: {
+  return runWithEvent(round.event_id, () => {
+    const { inserted, scoreId } = upsertScrambleScore({
       roundId: entry.round_id,
       scrambleEntryId: entry.id,
       holeNumber: parsed.data.holeNumber,
       strokes: parsed.data.strokes,
-    },
+      enteredBy: gate.playerId,
+    });
+
+    recordAudit({
+      playerId: gate.playerId,
+      action: inserted ? "score.insert" : "score.update",
+      entityType: "hole_score",
+      entityId: scoreId,
+      after: {
+        roundId: entry.round_id,
+        scrambleEntryId: entry.id,
+        holeNumber: parsed.data.holeNumber,
+        strokes: parsed.data.strokes,
+      },
+    });
+
+    emitChange("hole_scores");
+    postIfLeaderChanged();
+    postTeeTimeAlertIfDue();
+    emitChange("chat_messages");
+
+    return NextResponse.json({ ok: true, scoreId });
   });
-
-  emitChange("hole_scores");
-  postIfLeaderChanged();
-  postTeeTimeAlertIfDue();
-  emitChange("chat_messages");
-
-  return NextResponse.json({ ok: true, scoreId });
 }

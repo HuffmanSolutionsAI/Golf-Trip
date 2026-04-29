@@ -31,6 +31,7 @@ type Props = {
   roundIsLocked: boolean;
   allPlayers?: PlayerRow[];
   scorerName?: string | null;
+  eventId?: string;
 };
 
 export function ScrambleScorecard(props: Props) {
@@ -42,7 +43,7 @@ export function ScrambleScorecard(props: Props) {
     initial: number | null;
   } | null>(null);
 
-  useLiveRefresh(["hole_scores", "scramble_entries"]);
+  useLiveRefresh(["hole_scores", "scramble_entries"], props.eventId);
 
   useEffect(() => setScores(props.initialScores), [props.initialScores]);
 

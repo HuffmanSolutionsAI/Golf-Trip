@@ -5,6 +5,7 @@ import { getMatch, upsertPlayerScore } from "@/lib/repo/scores";
 import { getTeeGroupForMatch } from "@/lib/repo/teeGroups";
 import { getDb } from "@/lib/db";
 import { emitChange } from "@/lib/events";
+import { runWithEvent } from "@/lib/repo/events";
 import { recordAudit } from "@/lib/repo/audit";
 import {
   postIfEagleOrBetter,
@@ -54,34 +55,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Round is locked." }, { status: 403 });
   }
 
-  const { inserted, scoreId } = upsertPlayerScore({
-    roundId: match.round_id,
-    playerId,
-    holeNumber,
-    strokes,
-    enteredBy: gate.playerId,
+  // All event-scoped writes (audit, chat, SSE emits) need to resolve to the
+  // round's event so non-N&P events stream to their own listeners and write
+  // to their own chat. The match handler itself is global (matches are
+  // looked up by id); only the side effects need scoping.
+  return runWithEvent(round.event_id, () => {
+    const { inserted, scoreId } = upsertPlayerScore({
+      roundId: match.round_id,
+      playerId,
+      holeNumber,
+      strokes,
+      enteredBy: gate.playerId,
+    });
+
+    recordAudit({
+      playerId: gate.playerId,
+      action: inserted ? "score.insert" : "score.update",
+      entityType: "hole_score",
+      entityId: scoreId,
+      after: { roundId: match.round_id, playerId, holeNumber, strokes },
+    });
+
+    emitChange("hole_scores");
+
+    const hole = db
+      .prepare("SELECT * FROM holes WHERE round_id = ? AND hole_number = ?")
+      .get(match.round_id, holeNumber) as HoleRow | undefined;
+    const player = db
+      .prepare("SELECT * FROM players WHERE id = ?")
+      .get(playerId) as PlayerRow | undefined;
+    if (hole && player) postIfEagleOrBetter(strokes, hole, player, round);
+    postIfMatchJustWentFinal(matchId);
+    postIfLeaderChanged();
+    postTeeTimeAlertIfDue();
+    emitChange("chat_messages");
+
+    return NextResponse.json({ ok: true, scoreId });
   });
-
-  recordAudit({
-    playerId: gate.playerId,
-    action: inserted ? "score.insert" : "score.update",
-    entityType: "hole_score",
-    entityId: scoreId,
-    after: { roundId: match.round_id, playerId, holeNumber, strokes },
-  });
-
-  emitChange("hole_scores");
-
-  // Side effects.
-  const hole = db
-    .prepare("SELECT * FROM holes WHERE round_id = ? AND hole_number = ?")
-    .get(match.round_id, holeNumber) as HoleRow | undefined;
-  const player = db.prepare("SELECT * FROM players WHERE id = ?").get(playerId) as PlayerRow | undefined;
-  if (hole && player) postIfEagleOrBetter(strokes, hole, player, round);
-  postIfMatchJustWentFinal(matchId);
-  postIfLeaderChanged();
-  postTeeTimeAlertIfDue();
-  emitChange("chat_messages");
-
-  return NextResponse.json({ ok: true, scoreId });
 }
