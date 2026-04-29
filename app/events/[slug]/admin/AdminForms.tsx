@@ -556,3 +556,166 @@ export function AutoFillButton({
     </span>
   );
 }
+
+export function RoleInviteForm({ slug }: { slug: string }) {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"commissioner" | "scorer" | "player">(
+    "commissioner",
+  );
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<
+    { kind: "ok" | "err"; text: string } | null
+  >(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setMessage(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/roles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMessage({ kind: "err", text: body.error ?? "Could not invite." });
+        setBusy(false);
+        return;
+      }
+      setMessage({ kind: "ok", text: `Invited ${email} as ${role}.` });
+      setEmail("");
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setMessage({ kind: "err", text: "Network error. Try again." });
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
+      <Field label="Email">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="them@example.com"
+          className="font-body-serif px-3 py-2 w-[260px]"
+          style={fieldStyle}
+        />
+      </Field>
+      <Field label="Role">
+        <select
+          value={role}
+          onChange={(e) =>
+            setRole(e.target.value as "commissioner" | "scorer" | "player")
+          }
+          className="font-body-serif px-3 py-2 w-[160px]"
+          style={fieldStyle}
+        >
+          <option value="commissioner">Co-commissioner</option>
+          <option value="scorer">Scorer</option>
+          <option value="player">Player</option>
+        </select>
+      </Field>
+      <button
+        type="submit"
+        disabled={busy || !email}
+        className="font-ui uppercase px-4 py-2.5"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.28em",
+          color: "var(--color-cream)",
+          background: "var(--color-navy)",
+          fontWeight: 600,
+          opacity: busy || !email ? 0.5 : 1,
+        }}
+      >
+        {busy ? "Sending…" : "Send invite"}
+      </button>
+      {message && (
+        <div
+          className="font-body-serif italic w-full"
+          style={{
+            fontSize: 12,
+            color:
+              message.kind === "ok"
+                ? "var(--color-stone)"
+                : "var(--color-oxblood)",
+          }}
+        >
+          {message.text}
+        </div>
+      )}
+    </form>
+  );
+}
+
+export function RevokeRoleButton({
+  slug,
+  userId,
+}: {
+  slug: string;
+  userId: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    if (!confirm("Revoke this role?")) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/roles/${userId}`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not revoke.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        className="font-ui uppercase px-2 py-1"
+        title="Revoke"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          border: "1px solid var(--color-rule-cream)",
+          background: "transparent",
+          opacity: busy ? 0.5 : 1,
+        }}
+      >
+        {busy ? "…" : "Revoke"}
+      </button>
+      {error && (
+        <span
+          className="font-body-serif italic mt-1"
+          style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}

@@ -8,7 +8,70 @@ import { listMatches, listScrambleEntries } from "@/lib/repo/scores";
 import { listCourses } from "@/lib/repo/courses";
 import { formatIdForRound, FORMATS } from "@/lib/formats/registry";
 import { formatTeeTime, toRoman } from "@/lib/utils";
-import { TeamForm, PlayerForm, RoundForm, AutoFillButton } from "./AdminForms";
+import { getDb } from "@/lib/db";
+import {
+  TeamForm,
+  PlayerForm,
+  RoundForm,
+  AutoFillButton,
+  RoleInviteForm,
+  RevokeRoleButton,
+} from "./AdminForms";
+
+type RoleListing = {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  role: "commissioner" | "scorer" | "player" | "spectator";
+  is_bootstrap: boolean;
+};
+
+function listRoleGrants(slug: string, bootstrapUserId: string | null): RoleListing[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT er.user_id, er.role, u.email, u.display_name
+         FROM event_roles er
+         JOIN users u ON u.id = er.user_id
+         WHERE er.event_id = ?
+         ORDER BY
+           CASE er.role
+             WHEN 'commissioner' THEN 0
+             WHEN 'scorer' THEN 1
+             WHEN 'player' THEN 2
+             ELSE 3
+           END,
+           u.email`,
+    )
+    .all(slug) as Array<{
+    user_id: string;
+    role: RoleListing["role"];
+    email: string;
+    display_name: string | null;
+  }>;
+  const seen = new Set(rows.map((r) => r.user_id));
+  const out: RoleListing[] = rows.map((r) => ({
+    ...r,
+    is_bootstrap: r.user_id === bootstrapUserId,
+  }));
+  if (bootstrapUserId && !seen.has(bootstrapUserId)) {
+    const u = db
+      .prepare("SELECT id, email, display_name FROM users WHERE id = ?")
+      .get(bootstrapUserId) as
+      | { id: string; email: string; display_name: string | null }
+      | undefined;
+    if (u) {
+      out.unshift({
+        user_id: u.id,
+        email: u.email,
+        display_name: u.display_name,
+        role: "commissioner",
+        is_bootstrap: true,
+      });
+    }
+  }
+  return out;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +150,8 @@ export default async function EventAdminPage({
   for (const arr of playersByTeam.values()) {
     arr.sort((a, b) => a.team_slot.localeCompare(b.team_slot));
   }
+
+  const roleGrants = listRoleGrants(slug, guard.event.commissioner_user_id);
 
   return (
     <div className="paper-grain min-h-[100dvh]">
@@ -367,6 +432,64 @@ export default async function EventAdminPage({
               />
             </div>
           )}
+        </Section>
+
+        <Section
+          title="Co-commissioners & roles"
+          count={roleGrants.length}
+          empty="Just you. Invite others by email below."
+        >
+          {roleGrants.length > 0 && (
+            <ul className="mt-2">
+              {roleGrants.map((g) => (
+                <li
+                  key={g.user_id}
+                  className="grid items-center gap-3 py-2.5"
+                  style={{
+                    gridTemplateColumns: "minmax(0,1fr) auto auto",
+                    borderBottom: "1px solid var(--color-rule-cream)",
+                  }}
+                >
+                  <div className="min-w-0">
+                    <div
+                      className="font-display text-[var(--color-navy)] truncate"
+                      style={{ fontSize: 16 }}
+                    >
+                      {g.display_name ?? g.email}
+                    </div>
+                    {g.display_name && (
+                      <div
+                        className="font-mono mt-0.5 truncate"
+                        style={{ fontSize: 11, color: "var(--color-stone)" }}
+                      >
+                        {g.email}
+                      </div>
+                    )}
+                  </div>
+                  <span
+                    className="font-ui uppercase"
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "0.22em",
+                      color: "var(--color-gold)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {g.role}
+                    {g.is_bootstrap ? " · creator" : ""}
+                  </span>
+                  {g.is_bootstrap ? (
+                    <span />
+                  ) : (
+                    <RevokeRoleButton slug={slug} userId={g.user_id} />
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-5">
+            <RoleInviteForm slug={slug} />
+          </div>
         </Section>
       </div>
     </div>
