@@ -51,6 +51,7 @@ export type PlayerRow = {
 export type RoundRow = {
   id: string;
   event_id: string;
+  course_id: string | null;
   day: 1 | 2 | 3;
   date: string;
   course_name: string;
@@ -60,6 +61,35 @@ export type RoundRow = {
   is_locked: number;
   created_at: string;
   updated_at: string;
+};
+
+export type CourseRow = {
+  id: string;
+  name: string;
+  location: string | null;
+  total_par: number;
+  hole_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CourseHoleRow = {
+  course_id: string;
+  hole_number: number;
+  par: number;
+  handicap_index: number | null;
+  yardage: number | null;
+};
+
+export type CourseTeeBoxRow = {
+  id: string;
+  course_id: string;
+  name: string;
+  rating: number;
+  slope: number;
+  total_yards: number | null;
+  sort_order: number;
+  created_at: string;
 };
 
 export type HoleRow = {

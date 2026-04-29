@@ -84,6 +84,11 @@ function init(db: Database.Database) {
   ensureColumn(db, "players", "email", "email TEXT");
   ensureColumn(db, "sessions", "user_id", "user_id TEXT");
 
+  // Course library (Plan A · Phase 3a). rounds.course_id is nullable so
+  // legacy rounds (created before the library existed) keep their
+  // course_name snapshot without back-referencing a library row.
+  ensureColumn(db, "rounds", "course_id", "course_id TEXT");
+
   // Legacy DBs created sessions.player_id as NOT NULL with no user_id
   // column. SQLite can't drop a NOT NULL constraint via ALTER, so detect
   // and rebuild. The new shape allows either player_id or user_id (XOR).
@@ -122,6 +127,10 @@ function init(db: Database.Database) {
   if (n === 0) {
     db.exec(readSql("seed.sql"));
   }
+
+  // Course library — runs every boot so the canonical courses (Pinewild,
+  // Talamore, Hyland) are present and N&P rounds back-link to them.
+  db.exec(readSql("courses-seed.sql"));
 
   // Idempotent bootstrap — runs every boot so existing DBs pick up additive
   // data (tee groups + default scorer assignments) without db:reset.

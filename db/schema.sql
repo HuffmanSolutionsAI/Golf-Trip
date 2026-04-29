@@ -79,9 +79,10 @@ CREATE TABLE IF NOT EXISTS players (
 CREATE TABLE IF NOT EXISTS rounds (
   id          TEXT PRIMARY KEY,
   event_id    TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
+  course_id   TEXT REFERENCES courses(id),
   day         INTEGER NOT NULL CHECK (day IN (1,2,3)),
   date        TEXT NOT NULL,            -- ISO date 'YYYY-MM-DD'
-  course_name TEXT NOT NULL,
+  course_name TEXT NOT NULL,            -- snapshot of course label at round creation
   total_par   INTEGER NOT NULL,
   format      TEXT NOT NULL CHECK (format IN ('singles','scramble_2man','scramble_4man')),
   tee_time    TEXT NOT NULL,            -- 'HH:MM:SS'
@@ -89,6 +90,44 @@ CREATE TABLE IF NOT EXISTS rounds (
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(event_id, day)
+);
+
+-- ---------------------------------------------------------------------------
+-- courses — reusable course templates. A round references a course (via
+-- round.course_id) when created from the library; round.course_name keeps
+-- a snapshot of the human label so legacy rounds without a course_id stay
+-- meaningful, and so future rename of a course doesn't retro-edit history.
+-- (Plan A · Phase 3a)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS courses (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  location    TEXT,
+  total_par   INTEGER NOT NULL,
+  hole_count  INTEGER NOT NULL DEFAULT 18 CHECK (hole_count IN (9, 18)),
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS course_holes (
+  course_id      TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  hole_number    INTEGER NOT NULL CHECK (hole_number BETWEEN 1 AND 18),
+  par            INTEGER NOT NULL CHECK (par BETWEEN 3 AND 5),
+  handicap_index INTEGER CHECK (handicap_index BETWEEN 1 AND 18),
+  yardage        INTEGER,
+  PRIMARY KEY (course_id, hole_number)
+);
+
+CREATE TABLE IF NOT EXISTS course_tee_boxes (
+  id          TEXT PRIMARY KEY,
+  course_id   TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  rating      REAL NOT NULL,
+  slope       INTEGER NOT NULL CHECK (slope BETWEEN 55 AND 155),
+  total_yards INTEGER,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (course_id, name)
 );
 
 -- ---------------------------------------------------------------------------
