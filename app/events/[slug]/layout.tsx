@@ -63,6 +63,13 @@ export default async function EventLayout({
             >
               Roster
             </Link>
+            <Link
+              href={`/events/${slug}/wagering`}
+              className="font-ui uppercase text-[var(--color-navy)] hidden md:inline"
+              style={{ fontSize: 10, letterSpacing: "0.24em" }}
+            >
+              Wagering
+            </Link>
           </nav>
         </div>
       </header>

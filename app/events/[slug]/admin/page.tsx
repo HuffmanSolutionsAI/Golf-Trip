@@ -20,6 +20,17 @@ import {
   PlayerRow,
   RoundDeleteButton,
 } from "./AdminForms";
+import {
+  SideBetCreateForm,
+  SideBetParticipantManager,
+  SideBetSettleButton,
+  SideBetDeleteButton,
+} from "./SideBetForms";
+import {
+  listEntries as listSideBetEntries,
+  listPayouts as listSideBetPayouts,
+  listSideBets,
+} from "@/lib/repo/sideBets";
 
 type RoleListing = {
   user_id: string;
@@ -117,15 +128,27 @@ export default async function EventAdminPage({
   }
 
   const { event } = guard;
-  const { teams, players, rounds, allMatches, allEntries } = runWithEvent(
+  const { teams, players, rounds, allMatches, allEntries, sideBets, sideBetEntries, sideBetPayouts } = runWithEvent(
     slug,
-    () => ({
-      teams: listTeams(),
-      players: listPlayers(),
-      rounds: listRounds(),
-      allMatches: listMatches(),
-      allEntries: listScrambleEntries(),
-    }),
+    () => {
+      const sb = listSideBets();
+      const entries: Record<string, ReturnType<typeof listSideBetEntries>> = {};
+      const payouts: Record<string, ReturnType<typeof listSideBetPayouts>> = {};
+      for (const b of sb) {
+        entries[b.id] = listSideBetEntries(b.id);
+        payouts[b.id] = listSideBetPayouts(b.id);
+      }
+      return {
+        teams: listTeams(),
+        players: listPlayers(),
+        rounds: listRounds(),
+        allMatches: listMatches(),
+        allEntries: listScrambleEntries(),
+        sideBets: sb,
+        sideBetEntries: entries,
+        sideBetPayouts: payouts,
+      };
+    },
   );
   const courses = listCourses();
   const usedDays = new Set(rounds.map((r) => r.day));
@@ -379,6 +402,141 @@ export default async function EventAdminPage({
                 courses={courses}
                 usedDays={Array.from(usedDays)}
               />
+            </div>
+          )}
+        </Section>
+
+        <Section
+          title="Side bets"
+          count={sideBets.length}
+          empty={
+            players.length === 0
+              ? "Add players first, then bets."
+              : "No bets yet. Create one below."
+          }
+        >
+          {sideBets.length > 0 && (
+            <ul className="mt-2">
+              {sideBets.map((b) => {
+                const ents = sideBetEntries[b.id] ?? [];
+                const pays = sideBetPayouts[b.id] ?? [];
+                const pot = b.buy_in_cents * ents.length;
+                const round =
+                  b.round_id && rounds.find((r) => r.id === b.round_id);
+                return (
+                  <li
+                    key={b.id}
+                    className="grid items-start gap-3 py-3"
+                    style={{
+                      gridTemplateColumns:
+                        "minmax(0,1fr) auto auto auto auto",
+                      borderBottom: "1px solid var(--color-rule-cream)",
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div
+                        className="font-display text-[var(--color-navy)]"
+                        style={{ fontSize: 18, lineHeight: 1.15 }}
+                      >
+                        {b.name}
+                      </div>
+                      <div
+                        className="font-body-serif italic mt-0.5"
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-stone)",
+                        }}
+                      >
+                        {round
+                          ? `Day ${round.day} · ${round.course_name}`
+                          : "Event-wide"}
+                      </div>
+                      <div className="mt-2">
+                        <SideBetParticipantManager
+                          slug={slug}
+                          bet={b}
+                          participants={ents
+                            .filter((e) => e.player_id)
+                            .map((e) => ({ player_id: e.player_id! }))}
+                          rosterPlayers={players}
+                        />
+                      </div>
+                      {b.status === "settled" && pays.length > 0 && (
+                        <div
+                          className="mt-2 font-body-serif"
+                          style={{
+                            fontSize: 12,
+                            color: "var(--color-stone)",
+                          }}
+                        >
+                          Payouts:{" "}
+                          {pays
+                            .map((p) => {
+                              const r = players.find(
+                                (x) => x.id === p.recipient_player_id,
+                              );
+                              return `${r?.name ?? "?"} $${(
+                                p.amount_cents / 100
+                              ).toFixed(2)}`;
+                            })
+                            .join(" · ")}
+                        </div>
+                      )}
+                    </div>
+                    <span
+                      className="font-mono text-right"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--color-stone)",
+                      }}
+                    >
+                      ${(b.buy_in_cents / 100).toFixed(2)} ea
+                    </span>
+                    <span
+                      className="font-mono text-right"
+                      style={{
+                        fontSize: 12,
+                        color:
+                          b.status === "settled"
+                            ? "var(--color-stone)"
+                            : "var(--color-navy)",
+                      }}
+                    >
+                      Pot ${(pot / 100).toFixed(2)}
+                    </span>
+                    <span
+                      className="font-ui uppercase text-right"
+                      style={{
+                        fontSize: 10,
+                        letterSpacing: "0.22em",
+                        color:
+                          b.status === "settled"
+                            ? "var(--color-stone)"
+                            : "var(--color-gold)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {b.status}
+                    </span>
+                    <span className="flex flex-col items-end gap-1">
+                      <SideBetSettleButton
+                        slug={slug}
+                        bet={b}
+                        participants={ents
+                          .filter((e) => e.player_id)
+                          .map((e) => ({ player_id: e.player_id! }))}
+                        rosterPlayers={players}
+                      />
+                      <SideBetDeleteButton slug={slug} bet={b} />
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {players.length > 0 && (
+            <div className="mt-5">
+              <SideBetCreateForm slug={slug} rounds={rounds} />
             </div>
           )}
         </Section>

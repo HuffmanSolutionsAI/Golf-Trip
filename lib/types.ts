@@ -92,6 +92,48 @@ export type CourseTeeBoxRow = {
   created_at: string;
 };
 
+export type SideBetType =
+  | "custom"
+  | "skins"
+  | "presses"
+  | "ctp"
+  | "long_drive"
+  | "calcutta";
+
+export type SideBetStatus = "open" | "settled";
+
+export type SideBetRow = {
+  id: string;
+  event_id: string;
+  type: SideBetType;
+  name: string;
+  description: string | null;
+  buy_in_cents: number;
+  status: SideBetStatus;
+  rules_json: string | null;
+  round_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SideBetEntryRow = {
+  id: string;
+  side_bet_id: string;
+  player_id: string | null;
+  team_id: string | null;
+  joined_at: string;
+};
+
+export type SideBetPayoutRow = {
+  id: string;
+  side_bet_id: string;
+  recipient_player_id: string | null;
+  recipient_team_id: string | null;
+  amount_cents: number;
+  note: string | null;
+  created_at: string;
+};
+
 export type HoleRow = {
   id: string;
   round_id: string;

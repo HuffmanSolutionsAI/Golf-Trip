@@ -326,3 +326,64 @@ CREATE TABLE IF NOT EXISTS tee_group_entries (
   PRIMARY KEY (tee_group_id, scramble_entry_id),
   UNIQUE (scramble_entry_id)
 );
+
+-- ---------------------------------------------------------------------------
+-- side_bets — wagering ledger. (Plan A · Phase 4a)
+-- We never touch real money; this is a pot/payout ledger.
+--
+-- type:    'custom' is shipping; the others are stubs for typed bets that
+--          will auto-compute payouts in later phases (skins, presses,
+--          ctp/long_drive per-hole, calcutta auctions).
+-- status:  'open' = participants can be added/removed; 'settled' =
+--          payouts recorded, immutable.
+-- buy_in_cents: per-participant; pot = buy_in_cents * |entries|.
+-- round_id: optional pin to a specific round (e.g. skins for Day 2);
+--           NULL means event-wide.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS side_bets (
+  id            TEXT PRIMARY KEY,
+  event_id      TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  type          TEXT NOT NULL CHECK (type IN ('custom','skins','presses','ctp','long_drive','calcutta')),
+  name          TEXT NOT NULL,
+  description   TEXT,
+  buy_in_cents  INTEGER NOT NULL DEFAULT 0 CHECK (buy_in_cents >= 0),
+  status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','settled')),
+  rules_json    TEXT,
+  round_id      TEXT REFERENCES rounds(id) ON DELETE SET NULL,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS side_bets_event_idx ON side_bets (event_id);
+
+-- Entries: a participant in the bet. Either player_id or team_id is
+-- set (XOR) — player-keyed for skins/presses/CTP/custom, team-keyed for
+-- calcutta. Two partial unique indexes enforce 'one row per participant
+-- per bet' on each side without forcing both columns NOT NULL.
+CREATE TABLE IF NOT EXISTS side_bet_entries (
+  id            TEXT PRIMARY KEY,
+  side_bet_id   TEXT NOT NULL REFERENCES side_bets(id) ON DELETE CASCADE,
+  player_id     TEXT REFERENCES players(id) ON DELETE CASCADE,
+  team_id       TEXT REFERENCES teams(id) ON DELETE CASCADE,
+  joined_at     TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK ((player_id IS NOT NULL) + (team_id IS NOT NULL) = 1)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS side_bet_entries_player_unique
+  ON side_bet_entries (side_bet_id, player_id) WHERE player_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS side_bet_entries_team_unique
+  ON side_bet_entries (side_bet_id, team_id) WHERE team_id IS NOT NULL;
+
+-- Payouts: recorded when a bet is settled. Same player-or-team XOR shape.
+CREATE TABLE IF NOT EXISTS side_bet_payouts (
+  id                  TEXT PRIMARY KEY,
+  side_bet_id         TEXT NOT NULL REFERENCES side_bets(id) ON DELETE CASCADE,
+  recipient_player_id TEXT REFERENCES players(id),
+  recipient_team_id   TEXT REFERENCES teams(id),
+  amount_cents        INTEGER NOT NULL CHECK (amount_cents >= 0),
+  note                TEXT,
+  created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK ((recipient_player_id IS NOT NULL) + (recipient_team_id IS NOT NULL) = 1)
+);
+
+CREATE INDEX IF NOT EXISTS side_bet_payouts_bet_idx ON side_bet_payouts (side_bet_id);
