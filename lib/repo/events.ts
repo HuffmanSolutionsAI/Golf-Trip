@@ -50,3 +50,10 @@ export function getBrandOverride(id: string): BrandOverrideRow | null {
       .get(id) as BrandOverrideRow) ?? null
   );
 }
+
+export function listBrandOverrides(): BrandOverrideRow[] {
+  const db = getDb();
+  return db
+    .prepare(`SELECT * FROM brand_overrides ORDER BY name`)
+    .all() as BrandOverrideRow[];
+}

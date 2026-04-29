@@ -11,6 +11,18 @@ INSERT OR IGNORE INTO brand_overrides (id, name, tokens_json, hero_copy) VALUES
     'Editorial / Volume II',
     '{"palette":"midnight-oak","fonts":{"display":"DM Serif Display Italic","body":"Tinos","ui":"Inter","mono":"JetBrains Mono"},"accents":{"rule":"gold","grain":"paper"}}',
     'Volume II'
+  ),
+  (
+    'brand-pebble',
+    'Pebble',
+    '{"tokens":{"--color-cream":"#ECDFC8","--color-navy":"#163D5C","--color-gold":"#8C714A","--color-stone":"#6F7D83","--color-oxblood":"#7A2222","--color-rule-cream":"rgba(22, 61, 92, 0.16)"}}',
+    NULL
+  ),
+  (
+    'brand-augusta',
+    'Pinestraw',
+    '{"tokens":{"--color-cream":"#F4EAD7","--color-navy":"#1F4030","--color-gold":"#C8A951","--color-stone":"#5D6648","--color-oxblood":"#7A2F1F","--color-rule-cream":"rgba(31, 64, 48, 0.16)"}}',
+    NULL
   );
 
 INSERT OR IGNORE INTO events (

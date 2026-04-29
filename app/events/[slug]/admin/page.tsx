@@ -19,6 +19,9 @@ import {
   TeamRow,
   PlayerRow,
   RoundDeleteButton,
+  BrandPresetCard,
+  BrandClearButton,
+  type BrandPreset,
 } from "./AdminForms";
 import {
   SideBetCreateForm,
@@ -33,6 +36,7 @@ import {
   listPayouts as listSideBetPayouts,
   listSideBets,
 } from "@/lib/repo/sideBets";
+import { listBrandOverrides } from "@/lib/repo/events";
 
 type RoleListing = {
   user_id: string;
@@ -185,6 +189,41 @@ export default async function EventAdminPage({
   }
 
   const roleGrants = listRoleGrants(slug, guard.event.commissioner_user_id);
+
+  // Brand presets: parse the token swatches out of each row's tokens_json
+  // so the admin can preview them. Rows with no palette tokens (e.g. the
+  // legacy 'Editorial / Volume II' descriptor) fall back to the app's
+  // baseline so they still render with valid swatches.
+  const baselineSwatches = {
+    cream: "#F2F5EB",
+    navy: "#1B2E3C",
+    gold: "#A58859",
+    stone: "#8C8075",
+  };
+  const brandPresets: BrandPreset[] = listBrandOverrides().map((row) => {
+    const swatches = { ...baselineSwatches };
+    if (row.tokens_json) {
+      try {
+        const parsed = JSON.parse(row.tokens_json) as {
+          tokens?: Record<string, string>;
+        };
+        const t = parsed?.tokens ?? {};
+        if (t["--color-cream"]) swatches.cream = t["--color-cream"];
+        if (t["--color-navy"]) swatches.navy = t["--color-navy"];
+        if (t["--color-gold"]) swatches.gold = t["--color-gold"];
+        if (t["--color-stone"]) swatches.stone = t["--color-stone"];
+      } catch {
+        /* keep baseline */
+      }
+    }
+    return {
+      id: row.id,
+      name: row.name,
+      hero_copy: row.hero_copy,
+      swatches,
+    };
+  });
+  const activeBrandId = guard.event.brand_override_id;
 
   return (
     <div className="paper-grain min-h-[100dvh]">
@@ -630,6 +669,40 @@ export default async function EventAdminPage({
               />
             </div>
           )}
+        </Section>
+
+        <Section
+          title="Branding"
+          count={brandPresets.length}
+          empty="No brand presets installed."
+        >
+          <p
+            className="font-body-serif italic mt-2 mb-4"
+            style={{
+              fontSize: 13,
+              color: "var(--color-stone)",
+              opacity: 0.75,
+              lineHeight: 1.55,
+              maxWidth: 540,
+            }}
+          >
+            Pick a palette for this event. Layout, typography, and grid stay
+            the same — only colors swap. The default look applies if no
+            preset is active.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {brandPresets.map((p) => (
+              <BrandPresetCard
+                key={p.id}
+                slug={slug}
+                preset={p}
+                active={p.id === activeBrandId}
+              />
+            ))}
+          </div>
+          <div className="mt-4">
+            <BrandClearButton slug={slug} visible={!!activeBrandId} />
+          </div>
         </Section>
 
         <Section

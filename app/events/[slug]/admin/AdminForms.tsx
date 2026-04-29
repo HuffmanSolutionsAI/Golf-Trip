@@ -1551,3 +1551,187 @@ export function RoundDeleteButton({
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// Branding (Plan A · Phase 5)
+// ---------------------------------------------------------------------------
+
+export type BrandPreset = {
+  id: string;
+  name: string;
+  hero_copy: string | null;
+  swatches: { cream: string; navy: string; gold: string; stone: string };
+};
+
+export function BrandPresetCard({
+  slug,
+  preset,
+  active,
+}: {
+  slug: string;
+  preset: BrandPreset;
+  active: boolean;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function activate() {
+    if (busy || active) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/brand`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand_override_id: preset.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not activate.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="flex flex-col gap-2 p-3"
+      style={{
+        border: active
+          ? "2px solid var(--color-gold)"
+          : "1px solid var(--color-rule-cream)",
+        background: preset.swatches.cream,
+        minWidth: 180,
+      }}
+    >
+      <div
+        className="font-display"
+        style={{
+          fontSize: 20,
+          color: preset.swatches.navy,
+          lineHeight: 1.05,
+        }}
+      >
+        {preset.name}
+      </div>
+      <div className="flex items-center gap-1.5">
+        {(["cream", "navy", "gold", "stone"] as const).map((k) => (
+          <span
+            key={k}
+            title={k}
+            className="rounded-full"
+            style={{
+              width: 18,
+              height: 18,
+              background: preset.swatches[k],
+              border: "1px solid rgba(0,0,0,0.08)",
+            }}
+          />
+        ))}
+      </div>
+      <div className="flex items-center gap-2 mt-1">
+        <button
+          type="button"
+          onClick={activate}
+          disabled={busy || active}
+          className="font-ui uppercase px-3 py-1.5"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: active ? preset.swatches.stone : preset.swatches.cream,
+            background: active ? "transparent" : preset.swatches.navy,
+            border: active
+              ? `1px solid ${preset.swatches.stone}`
+              : "1px solid transparent",
+            fontWeight: 600,
+            opacity: busy ? 0.5 : 1,
+          }}
+        >
+          {active ? "Active" : busy ? "Activating…" : "Activate"}
+        </button>
+        {error && (
+          <span
+            className="font-body-serif italic"
+            style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+          >
+            {error}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function BrandClearButton({
+  slug,
+  visible,
+}: {
+  slug: string;
+  visible: boolean;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!visible) return null;
+
+  async function clear() {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/brand`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand_override_id: null }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not clear.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={clear}
+        disabled={busy}
+        className="font-ui uppercase px-3 py-1.5"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          border: "1px solid var(--color-rule-cream)",
+          background: "transparent",
+          opacity: busy ? 0.5 : 1,
+        }}
+      >
+        {busy ? "Clearing…" : "Use default look"}
+      </button>
+      {error && (
+        <span
+          className="font-body-serif italic"
+          style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}

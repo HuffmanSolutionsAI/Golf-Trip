@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getEventById } from "@/lib/repo/events";
+import { tokensForEvent } from "@/lib/brand/tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,16 @@ export default async function EventLayout({
   const event = getEventById(slug);
   if (!event) notFound();
 
+  // Brand tokens are CSS custom properties; setting them on this wrapper
+  // cascades to every event-scoped child page, but doesn't leak to the
+  // legacy N&P routes (which live outside this layout). (Plan A · Phase 5)
+  const brandTokens = tokensForEvent(event.brand_override_id);
+
   return (
-    <div className="min-h-[100dvh] bg-[var(--color-cream)] flex flex-col">
+    <div
+      className="min-h-[100dvh] bg-[var(--color-cream)] flex flex-col"
+      style={brandTokens as React.CSSProperties}
+    >
       <header
         className="paper-grain"
         style={{ borderBottom: "1px solid var(--color-gold)" }}
