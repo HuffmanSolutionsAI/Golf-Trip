@@ -484,3 +484,75 @@ function Field({
     </label>
   );
 }
+
+export function AutoFillButton({
+  slug,
+  roundId,
+}: {
+  slug: string;
+  roundId: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/events/${slug}/rounds/${roundId}/auto-fill`,
+        { method: "POST" },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not auto-fill.");
+        setBusy(false);
+        return;
+      }
+      // body.skipped[] tells us whether teams were dropped; surface it
+      // briefly so the commissioner knows to top up the roster.
+      if (Array.isArray(body.skipped) && body.skipped.length > 0) {
+        const names = body.skipped.map((s: { team: string }) => s.team).join(", ");
+        setError(
+          `Filled ${body.entries_created} entries. Skipped: ${names} (${body.skipped[0].reason}).`,
+        );
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error. Try again.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        className="font-ui uppercase px-3 py-1.5"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.24em",
+          color: "var(--color-cream)",
+          background: "var(--color-navy)",
+          fontWeight: 600,
+          opacity: busy ? 0.5 : 1,
+        }}
+      >
+        {busy ? "Filling…" : "Auto-fill"}
+      </button>
+      {error && (
+        <span
+          className="font-body-serif italic text-right"
+          style={{ fontSize: 11, color: "var(--color-oxblood)", maxWidth: 240 }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}

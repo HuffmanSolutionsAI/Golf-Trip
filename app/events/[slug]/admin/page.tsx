@@ -4,10 +4,11 @@ import { checkCommissioner } from "@/lib/auth/eventPermissions";
 import { runWithEvent } from "@/lib/repo/events";
 import { listPlayers, listTeams } from "@/lib/repo/players";
 import { listRounds } from "@/lib/repo/rounds";
+import { listMatches, listScrambleEntries } from "@/lib/repo/scores";
 import { listCourses } from "@/lib/repo/courses";
 import { formatIdForRound, FORMATS } from "@/lib/formats/registry";
 import { formatTeeTime, toRoman } from "@/lib/utils";
-import { TeamForm, PlayerForm, RoundForm } from "./AdminForms";
+import { TeamForm, PlayerForm, RoundForm, AutoFillButton } from "./AdminForms";
 
 export const dynamic = "force-dynamic";
 
@@ -50,13 +51,32 @@ export default async function EventAdminPage({
   }
 
   const { event } = guard;
-  const { teams, players, rounds } = runWithEvent(slug, () => ({
-    teams: listTeams(),
-    players: listPlayers(),
-    rounds: listRounds(),
-  }));
+  const { teams, players, rounds, allMatches, allEntries } = runWithEvent(
+    slug,
+    () => ({
+      teams: listTeams(),
+      players: listPlayers(),
+      rounds: listRounds(),
+      allMatches: listMatches(),
+      allEntries: listScrambleEntries(),
+    }),
+  );
   const courses = listCourses();
   const usedDays = new Set(rounds.map((r) => r.day));
+  const matchCountByRound = new Map<string, number>();
+  for (const m of allMatches) {
+    matchCountByRound.set(
+      m.round_id,
+      (matchCountByRound.get(m.round_id) ?? 0) + 1,
+    );
+  }
+  const entryCountByRound = new Map<string, number>();
+  for (const e of allEntries) {
+    entryCountByRound.set(
+      e.round_id,
+      (entryCountByRound.get(e.round_id) ?? 0) + 1,
+    );
+  }
 
   const playersByTeam = new Map<string, typeof players>();
   for (const p of players) {
@@ -271,13 +291,20 @@ export default async function EventAdminPage({
             <ul className="mt-2">
               {rounds.map((r) => {
                 const fmt = FORMATS[formatIdForRound(r)];
+                const isScramble = fmt.unit !== "individual";
+                const count = isScramble
+                  ? entryCountByRound.get(r.id) ?? 0
+                  : matchCountByRound.get(r.id) ?? 0;
+                const countLabel = isScramble
+                  ? `${count} ${count === 1 ? "entry" : "entries"}`
+                  : `${count} ${count === 1 ? "match" : "matches"}`;
                 return (
                   <li
                     key={r.id}
                     className="grid items-center gap-3 py-3"
                     style={{
                       gridTemplateColumns:
-                        "30px minmax(0,1fr) auto auto",
+                        "30px minmax(0,1fr) auto auto auto",
                       borderBottom: "1px solid var(--color-rule-cream)",
                     }}
                   >
@@ -301,21 +328,27 @@ export default async function EventAdminPage({
                           color: "var(--color-stone)",
                         }}
                       >
-                        {fmt.short_label} · par {r.total_par}
+                        {fmt.short_label} · par {r.total_par} · {r.date} ·{" "}
+                        {formatTeeTime(r.tee_time)}
                       </div>
                     </div>
                     <span
                       className="font-mono text-right"
-                      style={{ fontSize: 12, color: "var(--color-stone)" }}
+                      style={{
+                        fontSize: 11,
+                        color:
+                          count === 0
+                            ? "var(--color-oxblood)"
+                            : "var(--color-stone)",
+                      }}
                     >
-                      {r.date}
+                      {countLabel}
                     </span>
-                    <span
-                      className="font-mono text-right"
-                      style={{ fontSize: 12, color: "var(--color-stone)" }}
-                    >
-                      {formatTeeTime(r.tee_time)}
-                    </span>
+                    {isScramble && count === 0 && teams.length > 0 ? (
+                      <AutoFillButton slug={slug} roundId={r.id} />
+                    ) : (
+                      <span />
+                    )}
                   </li>
                 );
               })}
