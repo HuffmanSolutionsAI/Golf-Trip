@@ -314,7 +314,10 @@ export default async function EventAdminPage({
                     >
                       {toRoman(r.day)}
                     </span>
-                    <div className="min-w-0">
+                    <Link
+                      href={`/events/${slug}/admin/rounds/${r.id}`}
+                      className="min-w-0 block"
+                    >
                       <div
                         className="font-display text-[var(--color-navy)] truncate"
                         style={{ fontSize: 18, lineHeight: 1.15 }}
@@ -331,8 +334,9 @@ export default async function EventAdminPage({
                         {fmt.short_label} · par {r.total_par} · {r.date} ·{" "}
                         {formatTeeTime(r.tee_time)}
                       </div>
-                    </div>
-                    <span
+                    </Link>
+                    <Link
+                      href={`/events/${slug}/admin/rounds/${r.id}`}
                       className="font-mono text-right"
                       style={{
                         fontSize: 11,
@@ -342,8 +346,8 @@ export default async function EventAdminPage({
                             : "var(--color-stone)",
                       }}
                     >
-                      {countLabel}
-                    </span>
+                      {countLabel} →
+                    </Link>
                     {isScramble && count === 0 && teams.length > 0 ? (
                       <AutoFillButton slug={slug} roundId={r.id} />
                     ) : (
