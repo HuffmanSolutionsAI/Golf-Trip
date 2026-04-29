@@ -1,14 +1,53 @@
--- SQLite schema for the N&P Invitational.
--- Idempotent: applied on first start, safe to re-run.
+-- SQLite schema. Idempotent: applied on first start, safe to re-run.
+--
+-- Multi-event aware. Every top-level entity (teams, players, rounds,
+-- chat_messages, audit_log) belongs to exactly one event. The N&P
+-- Invitational is the canonical first event with id='event-1'. On existing
+-- single-tenant DBs, lib/db.ts adds the event_id column (default 'event-1')
+-- and seeds event-1 before the rest of the schema is touched.
 
 PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
+
+-- ---------------------------------------------------------------------------
+-- events — top-level container. The N&P Invitational is 'event-1'.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS events (
+  id                    TEXT PRIMARY KEY,
+  name                  TEXT NOT NULL,
+  subtitle              TEXT,
+  start_date            TEXT,
+  end_date              TEXT,
+  visibility            TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public','unlisted','private')),
+  commissioner_user_id  TEXT,
+  handicap_source       TEXT NOT NULL DEFAULT 'manual' CHECK (handicap_source IN ('manual','ghin','whs')),
+  brand_override_id     TEXT,
+  created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at            TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------------------------------------------------------------------------
+-- brand_overrides — palette/wordmark/hero copy that an event can opt into.
+-- Default presentation is the Clubhouse / Midnight-Oak look applied by the
+-- app shell; this table holds named alternatives. The N&P Invitational pins
+-- 'Editorial / Volume II' here.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS brand_overrides (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  tokens_json TEXT NOT NULL,
+  wordmark    TEXT,
+  hero_copy   TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 -- ---------------------------------------------------------------------------
 -- teams
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS teams (
   id            TEXT PRIMARY KEY,
+  event_id      TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
   name          TEXT NOT NULL,
   display_color TEXT NOT NULL,
   sort_order    INTEGER NOT NULL,
@@ -21,6 +60,7 @@ CREATE TABLE IF NOT EXISTS teams (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS players (
   id         TEXT PRIMARY KEY,
+  event_id   TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
   name       TEXT NOT NULL UNIQUE,
   handicap   REAL NOT NULL,
   team_id    TEXT NOT NULL REFERENCES teams(id),
@@ -36,7 +76,8 @@ CREATE TABLE IF NOT EXISTS players (
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS rounds (
   id          TEXT PRIMARY KEY,
-  day         INTEGER NOT NULL UNIQUE CHECK (day IN (1,2,3)),
+  event_id    TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
+  day         INTEGER NOT NULL CHECK (day IN (1,2,3)),
   date        TEXT NOT NULL,            -- ISO date 'YYYY-MM-DD'
   course_name TEXT NOT NULL,
   total_par   INTEGER NOT NULL,
@@ -44,7 +85,8 @@ CREATE TABLE IF NOT EXISTS rounds (
   tee_time    TEXT NOT NULL,            -- 'HH:MM:SS'
   is_locked   INTEGER NOT NULL DEFAULT 0,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(event_id, day)
 );
 
 -- ---------------------------------------------------------------------------
@@ -127,6 +169,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS hole_scores_scramble_hole_unique
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS chat_messages (
   id        TEXT PRIMARY KEY,
+  event_id  TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
   player_id TEXT REFERENCES players(id),
   body      TEXT NOT NULL,
   kind      TEXT NOT NULL DEFAULT 'human' CHECK (kind IN ('human','system')),
@@ -140,6 +183,7 @@ CREATE INDEX IF NOT EXISTS chat_messages_posted_at_idx ON chat_messages (posted_
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS audit_log (
   id           TEXT PRIMARY KEY,
+  event_id     TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
   player_id    TEXT REFERENCES players(id),
   action       TEXT NOT NULL,
   entity_type  TEXT,

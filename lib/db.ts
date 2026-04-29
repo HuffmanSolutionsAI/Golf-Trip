@@ -17,12 +17,66 @@ function readSql(file: string): string {
   return fs.readFileSync(p, "utf8");
 }
 
+// Add a column to a table only if it isn't already there. SQLite has no
+// `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, so we check pragma first.
+function ensureColumn(
+  db: Database.Database,
+  table: string,
+  column: string,
+  ddl: string,
+) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{
+    name: string;
+  }>;
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
 function init(db: Database.Database) {
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.pragma("synchronous = NORMAL");
 
   db.exec(readSql("schema.sql"));
+
+  // Seed the canonical event row before any column migration runs — the
+  // event_id default 'event-1' must point at a real row to satisfy the FK.
+  db.exec(readSql("event-seed.sql"));
+
+  // Backfill event_id onto pre-multi-tenant tables. Fresh installs already
+  // declare these columns in schema.sql; this branch covers existing DBs
+  // upgraded in place.
+  ensureColumn(
+    db,
+    "teams",
+    "event_id",
+    "event_id TEXT NOT NULL DEFAULT 'event-1'",
+  );
+  ensureColumn(
+    db,
+    "players",
+    "event_id",
+    "event_id TEXT NOT NULL DEFAULT 'event-1'",
+  );
+  ensureColumn(
+    db,
+    "rounds",
+    "event_id",
+    "event_id TEXT NOT NULL DEFAULT 'event-1'",
+  );
+  ensureColumn(
+    db,
+    "chat_messages",
+    "event_id",
+    "event_id TEXT NOT NULL DEFAULT 'event-1'",
+  );
+  ensureColumn(
+    db,
+    "audit_log",
+    "event_id",
+    "event_id TEXT NOT NULL DEFAULT 'event-1'",
+  );
 
   // Seed only if teams table is empty.
   const { n } = db.prepare("SELECT COUNT(*) AS n FROM teams").get() as { n: number };
