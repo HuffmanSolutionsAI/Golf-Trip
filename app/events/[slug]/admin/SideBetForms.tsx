@@ -66,9 +66,11 @@ export function SideBetCreateForm({
   rounds: RoundRow[];
 }) {
   const router = useRouter();
+  const [type, setType] = useState<"custom" | "skins">("custom");
   const [name, setName] = useState("");
   const [buyIn, setBuyIn] = useState("");
   const [roundId, setRoundId] = useState("");
+  const [scoreType, setScoreType] = useState<"gross" | "net">("gross");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,27 +78,37 @@ export function SideBetCreateForm({
     e.preventDefault();
     if (busy) return;
     setError(null);
+    if (type === "skins" && !roundId) {
+      setError("Skins bets need a round.");
+      return;
+    }
     setBusy(true);
     try {
+      const body: Record<string, unknown> = {
+        type,
+        name,
+        buy_in_cents: dollarsToCents(buyIn || "0"),
+        round_id: roundId || undefined,
+      };
+      if (type === "skins") {
+        body.rules = { score_type: scoreType };
+      }
       const res = await fetch(`/api/events/${slug}/side-bets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "custom",
-          name,
-          buy_in_cents: dollarsToCents(buyIn || "0"),
-          round_id: roundId || undefined,
-        }),
+        body: JSON.stringify(body),
       });
-      const body = await res.json().catch(() => ({}));
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(body.error ?? "Could not create bet.");
+        setError(json.error ?? "Could not create bet.");
         setBusy(false);
         return;
       }
       setName("");
       setBuyIn("");
       setRoundId("");
+      setType("custom");
+      setScoreType("gross");
       router.refresh();
       setBusy(false);
     } catch {
@@ -107,6 +119,17 @@ export function SideBetCreateForm({
 
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
+      <Field label="Type">
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as "custom" | "skins")}
+          className="font-body-serif px-3 py-2 w-[140px]"
+          style={fieldStyle}
+        >
+          <option value="custom">Custom</option>
+          <option value="skins">Skins</option>
+        </select>
+      </Field>
       <Field label="Bet name">
         <input
           type="text"
@@ -114,8 +137,8 @@ export function SideBetCreateForm({
           maxLength={80}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Skins · Day II"
-          className="font-body-serif px-3 py-2 w-[240px]"
+          placeholder={type === "skins" ? "Skins · Day II" : "Closest to pin · 17"}
+          className="font-body-serif px-3 py-2 w-[220px]"
           style={fieldStyle}
         />
       </Field>
@@ -130,14 +153,18 @@ export function SideBetCreateForm({
           style={fieldStyle}
         />
       </Field>
-      <Field label="Round (optional)">
+      <Field
+        label={type === "skins" ? "Round" : "Round (optional)"}
+        hint={type === "skins" ? "Required for skins" : undefined}
+      >
         <select
+          required={type === "skins"}
           value={roundId}
           onChange={(e) => setRoundId(e.target.value)}
           className="font-body-serif px-3 py-2 w-[200px]"
           style={fieldStyle}
         >
-          <option value="">Event-wide</option>
+          <option value="">{type === "skins" ? "— Pick a round —" : "Event-wide"}</option>
           {rounds.map((r) => (
             <option key={r.id} value={r.id}>
               Day {r.day} · {r.course_name}
@@ -145,6 +172,19 @@ export function SideBetCreateForm({
           ))}
         </select>
       </Field>
+      {type === "skins" && (
+        <Field label="Scoring">
+          <select
+            value={scoreType}
+            onChange={(e) => setScoreType(e.target.value as "gross" | "net")}
+            className="font-body-serif px-3 py-2 w-[120px]"
+            style={fieldStyle}
+          >
+            <option value="gross">Gross</option>
+            <option value="net">Net</option>
+          </select>
+        </Field>
+      )}
       <button
         type="submit"
         disabled={busy || !name}
@@ -370,6 +410,8 @@ export function SideBetSettleButton({
       note: "",
     })),
   );
+  const [computeBusy, setComputeBusy] = useState(false);
+  const [computeMsg, setComputeMsg] = useState<string | null>(null);
 
   const pot = bet.buy_in_cents * participants.length;
   const totalCents = rows.reduce((sum, r) => sum + dollarsToCents(r.amount), 0);
@@ -382,6 +424,47 @@ export function SideBetSettleButton({
   }
   function removeRow(i: number) {
     setRows((rs) => rs.filter((_, j) => j !== i));
+  }
+
+  async function preFillFromScores() {
+    if (computeBusy) return;
+    setComputeMsg(null);
+    setComputeBusy(true);
+    try {
+      const res = await fetch(
+        `/api/events/${slug}/side-bets/${bet.id}/compute`,
+        { method: "POST" },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setComputeMsg(body.error ?? "Could not compute.");
+        setComputeBusy(false);
+        return;
+      }
+      type Suggested = {
+        recipient_player_id: string;
+        amount_cents: number;
+        note: string;
+      };
+      const suggested = body.payouts as Suggested[];
+      setRows(
+        suggested.map((p) => ({
+          recipient_id: p.recipient_player_id,
+          amount: (p.amount_cents / 100).toFixed(2),
+          note: p.note,
+        })),
+      );
+      const carry = body.carryover_remaining as number;
+      const unalloc = body.unallocated_cents as number;
+      const notes: string[] = [];
+      if (carry > 0) notes.push(`${carry} skin${carry === 1 ? "" : "s"} carried over (no winner)`);
+      if (unalloc > 0) notes.push(`$${(unalloc / 100).toFixed(2)} unallocated from rounding`);
+      setComputeMsg(notes.length > 0 ? `Pre-filled. ${notes.join(" · ")}.` : "Pre-filled.");
+      setComputeBusy(false);
+    } catch {
+      setComputeMsg("Network error.");
+      setComputeBusy(false);
+    }
   }
 
   async function settle() {
@@ -474,6 +557,34 @@ export function SideBetSettleButton({
           Pot ${centsToDollars(pot)} · payouts ${centsToDollars(totalCents)}
         </span>
       </div>
+      {bet.type === "skins" && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={preFillFromScores}
+            disabled={computeBusy}
+            className="font-ui uppercase px-3 py-1.5"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              color: "var(--color-cream)",
+              background: "var(--color-oxblood)",
+              fontWeight: 600,
+              opacity: computeBusy ? 0.5 : 1,
+            }}
+          >
+            {computeBusy ? "Computing…" : "Pre-fill from scores"}
+          </button>
+          {computeMsg && (
+            <span
+              className="font-body-serif italic"
+              style={{ fontSize: 12, color: "var(--color-stone)" }}
+            >
+              {computeMsg}
+            </span>
+          )}
+        </div>
+      )}
       {rows.map((row, i) => (
         <div key={i} className="flex flex-wrap items-end gap-2">
           <Field label="Recipient">

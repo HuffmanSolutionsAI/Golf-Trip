@@ -13,6 +13,10 @@ export const runtime = "nodejs";
 // MVP only ships type='custom'. The other types compile (schema accepts
 // them) but no auto-settle logic exists yet, so the commissioner has to
 // settle them manually like a custom bet.
+const RulesSchema = z.object({
+  score_type: z.enum(["gross", "net"]).optional(),
+});
+
 const Body = z.object({
   type: z
     .enum(["custom", "skins", "presses", "ctp", "long_drive", "calcutta"])
@@ -23,6 +27,7 @@ const Body = z.object({
   round_id: z.string().min(1).optional(),
   player_ids: z.array(z.string().min(1)).optional(),
   team_ids: z.array(z.string().min(1)).optional(),
+  rules: RulesSchema.optional(),
 });
 
 export async function POST(
@@ -77,6 +82,23 @@ export async function POST(
     }
   }
 
+  // Skins must be tied to a round so the compute endpoint has scores to read.
+  if (parsed.data.type === "skins" && !parsed.data.round_id) {
+    return NextResponse.json(
+      { error: "Skins bets need a round." },
+      { status: 400 },
+    );
+  }
+
+  const rulesJson =
+    parsed.data.type === "skins"
+      ? JSON.stringify({
+          score_type: parsed.data.rules?.score_type ?? "gross",
+        })
+      : parsed.data.rules
+        ? JSON.stringify(parsed.data.rules)
+        : null;
+
   const result = runWithEvent(slug, () => {
     const bet = createSideBet(slug, {
       type: parsed.data.type,
@@ -84,6 +106,7 @@ export async function POST(
       description: parsed.data.description ?? null,
       buy_in_cents: parsed.data.buy_in_cents,
       round_id: parsed.data.round_id ?? null,
+      rules_json: rulesJson,
     });
     for (const pid of parsed.data.player_ids ?? []) addPlayerEntry(bet.id, pid);
     for (const tid of parsed.data.team_ids ?? []) addTeamEntry(bet.id, tid);
