@@ -84,10 +84,10 @@ Clubhouse top nav
 │    ├── Discover (public events you might watch)
 │    └── Create event
 ├── Coaching / Lessons (existing)
-└── Profile (existing — handicap, GHIN, friends)
+└── Profile (existing — handicap, friends)
 ```
 
-A user's Clubhouse profile already carries handicap, GHIN, and identity.
+A user's Clubhouse profile already carries handicap and identity.
 Events reuses that profile — no duplicate fields, no parallel "tournament
 profile" concept.
 
@@ -123,7 +123,7 @@ Clubhouse already models golf objects we'd otherwise reinvent. Reuse them:
 |---|---|
 | `user` | event participants, commissioners, scorers |
 | `course` library | event rounds reference Clubhouse courses |
-| `handicap` (manual / GHIN) | event handicaps come from the user's Clubhouse profile by default |
+| `handicap` (manual entry) | event handicaps come from the user's Clubhouse profile by default; commissioner can override per event |
 | `round` (personal score history) | optional: an event round can write back to a player's personal history |
 
 Reciprocally, Events emits useful telemetry to Clubhouse:
@@ -173,12 +173,13 @@ The commissioner picks per event:
    Clubhouse already tracks it.
 2. **Manual override per event** — commissioner sets a number that takes
    precedence for this event only.
-3. **GHIN sync** — opt-in. If the user has connected GHIN to their
-   Clubhouse profile, the event uses that index live. Commissioner
-   chooses whether GHIN is *required* for this event or just *available*.
 
-GHIN integration lives at the Clubhouse layer (one connection per user,
-reused everywhere), not in the event feature. Events just consumes it.
+Live syncing from a handicap provider (GHIN, WHS) was on the original
+roadmap but is **deferred indefinitely** — there's no documented public
+GHIN API, and the unofficial endpoints sit in TOS-grey territory.
+We'll revisit if a clean integration path opens up. Until then, the
+commissioner can copy authoritative indices from the source of truth
+into Clubhouse profile or the per-event override.
 
 ---
 
@@ -280,10 +281,7 @@ implementation begins:
 3. **Course library?** Does Clubhouse already model courses with
    ratings/slope per tee box? If yes, reuse. If no, contribute the
    library from Plan A §4 to Clubhouse.
-4. **Handicap & GHIN status?** Is GHIN already wired into Clubhouse
-   profiles? If so, Events consumes it; if not, this becomes a Clubhouse-
-   level project before per-event GHIN works.
-5. **Brand documents.** Where in `playclubhouse` are the canonical brand
+4. **Brand documents.** Where in `playclubhouse` are the canonical brand
    docs (palette tokens, type scale, voice)? Surface them; this plan
    defers to them.
 

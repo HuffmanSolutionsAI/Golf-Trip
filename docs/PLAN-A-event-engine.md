@@ -63,7 +63,7 @@ Every existing table grows an `event_id` column; existing data migrates as
 | `start_date`, `end_date` | bounds rounds |
 | `visibility` | `public` (read-only for the world) / `unlisted` / `private` |
 | `commissioner_user_id` | owner |
-| `handicap_source` | `manual` / `ghin` / `whs` (see §6) |
+| `handicap_source` | `'manual'` (see §6 — other sources deferred) |
 | `brand_override_id` | optional pointer to a `brand_override` |
 | `created_at`, `updated_at` | |
 
@@ -128,38 +128,42 @@ enough to score; hole-by-hole yardage is optional polish.
 
 ## 5. Roster & teams
 
-- A **player** is a person at the event. Identified by name + optional email
-  + optional GHIN number. Email lets them claim the player on login.
+- A **player** is a person at the event. Identified by name + optional
+  email. Email lets them claim the player on login (auto-link via the
+  magic-link flow).
 - **Teams** are optional and per-event. Match play wants a 1-v-1 grid;
   scrambles want pairs/foursomes; an open stroke-play event has no teams at
   all.
 - **Slots** (A/B/C/D) we keep as an opt-in convenience for events that pair
   by slot like ours does. Commissioner can disable slots entirely.
 
-CSV import for rosters: name, email, GHIN, handicap, team, slot — paste a
+CSV import for rosters: name, email, handicap, team, slot — paste a
 spreadsheet, parse to draft, confirm to commit.
 
 ---
 
-## 6. Handicap sources (commissioner's choice)
+## 6. Handicap source — manual
 
-The commissioner picks the source per event:
+Handicaps are entered manually by the commissioner (or self-reported on
+the player roster). That's the only source we ship.
 
-1. **Manual** — admin enters a number per player. Lowest friction; what we
-   have today.
-2. **GHIN** — opt-in. Commissioner enables it; players supply their GHIN
-   number (or claim one already on the player row); we sync handicap index
-   nightly via the GHIN API. Enabling GHIN requires the commissioner to
-   accept GHIN's terms-of-use prompt in the app.
-3. **WHS / R&A** — same shape as GHIN, different provider. Stretch goal.
+Live syncing from a handicap provider (GHIN, WHS) was in the original
+plan but is **deferred indefinitely** — there is no documented public
+GHIN API, the unofficial endpoints sit in TOS-grey territory, and the
+USGA partner program isn't realistic for a self-hosted event engine.
+We'll revisit if a clean integration path opens up. For events that
+need authoritative indices today, the commissioner can copy them from
+the source of truth (their club's handicap report) into the manual
+field.
 
-Round-level handicap math (course handicap = index × slope ÷ 113 + course
-rating − par) is centralized in `lib/scoring/handicaps.ts` and works the
-same regardless of source. The source only changes how `players.handicap`
-gets populated.
+Round-level handicap math (course handicap = index × slope ÷ 113 +
+course rating − par) is centralized in `lib/scoring/handicaps.ts` and
+treats `players.handicap` as the input, regardless of how the number
+got there.
 
-Everything stays manual-first. GHIN is a feature you turn on, not a
-prerequisite.
+The `events.handicap_source` column exists in the schema for forward
+compatibility; today every row is `'manual'` and there's no UI to
+change it.
 
 ---
 
@@ -200,7 +204,7 @@ settlements. We never touch real money — this is a ledger, not Stripe.
   - **Scorer** — write access to the rounds/groups they're designated on
     (existing model).
   - **Player** — can claim their own player row, view scoring as
-    read-only, opt into GHIN sync.
+    read-only.
   - **Spectator** — implicit; read only.
 
 The current per-tee-group `scorer_player_id` model carries forward
@@ -282,11 +286,13 @@ through the event-aware layer.
 | **1 — public read** | event home + leaderboard + roster on `/<event>` slugs; existing site → event-1 | second event can run |
 | **2 — auth & roles** | magic-link login; commissioner & scorer role grants per event | self-serve commissioners |
 | **3 — formats & courses** | format plugin registry; course library; setup wizard | new formats / courses |
-| **4 — handicap sources** | GHIN opt-in integration | commissioner toggles GHIN |
-| **5 — wagering** | skins, presses, CTP/long drive, calcutta, custom side bets | wagering tab |
-| **6 — branding** | per-event palette + wordmark + custom domain | event-branded sites |
+| **4 — wagering** | skins, presses, CTP/long drive, calcutta, custom side bets | wagering tab |
+| **5 — branding** | per-event palette + wordmark + custom domain | event-branded sites |
 
 Each phase is independently shippable behind feature flags.
+
+Earlier drafts had a phase for GHIN handicap sync; that's deferred —
+see §6. Manual handicaps are the only source we ship.
 
 ---
 
