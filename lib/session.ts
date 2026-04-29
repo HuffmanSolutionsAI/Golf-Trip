@@ -84,6 +84,23 @@ export function findOrCreateUserByEmail(
     .get(id) as UserRow;
 }
 
+// Link any unclaimed player rows whose email matches the user's email to
+// that user. Runs after verify so a player record set up by a commissioner
+// (with player.email) automatically attaches when the player signs in.
+// Only links unclaimed rows (player.user_id IS NULL) so this is idempotent
+// and never overwrites an existing claim.
+export function autoClaimPlayersForUser(user: UserRow): number {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `UPDATE players
+         SET user_id = ?, updated_at = datetime('now')
+         WHERE LOWER(email) = ? AND user_id IS NULL`,
+    )
+    .run(user.id, user.email);
+  return result.changes;
+}
+
 export function closeSession(sessionId: string) {
   getDb().prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
 }

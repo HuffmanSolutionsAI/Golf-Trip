@@ -5,9 +5,13 @@ const PUBLIC_PREFIXES = [
   "/_next",
   "/api/session/login",
   "/api/auth/", // magic-link request + verify (Plan A · Phase 2)
-  "/api/events", // SSE stream — read-only, no auth needed
+  "/api/events", // SSE stream — read-only, no auth needed; covers
+  // /api/events itself AND /api/events/create which enforces auth in-route
   "/auth/", // sign-in / check-email / error pages (Plan A · Phase 2)
   "/events/", // public-read event surfaces (Plan A · Phase 1)
+  // Dashboard surfaces redirect to /auth/sign-in via in-page checks rather
+  // than the N&P landing, so we let middleware pass and let the page route.
+  "/dashboard",
   "/favicon",
   "/badge.svg",
 ];

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { findValidToken, markTokenUsed } from "@/lib/server/magicLink";
 import {
+  autoClaimPlayersForUser,
   findOrCreateUserByEmail,
   openUserSession,
   setSessionCookie,
@@ -10,8 +11,8 @@ export const runtime = "nodejs";
 
 function safeNext(next: string | null | undefined): string {
   // Only allow same-origin paths starting with '/'. Anything else falls back
-  // to the home page.
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/home";
+  // to the user dashboard.
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/dashboard";
   return next;
 }
 
@@ -27,9 +28,11 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL("/auth/error?reason=invalid", url.origin));
   }
 
-  // Materialize the user, mark token used, and open the session.
+  // Materialize the user, mark token used, attach any matching player
+  // slots, and open the session.
   const user = findOrCreateUserByEmail(row.email);
   markTokenUsed(row.token_hash);
+  autoClaimPlayersForUser(user);
   const { cookieValue, expiresAt } = openUserSession(user.id);
   await setSessionCookie(cookieValue, expiresAt);
 
