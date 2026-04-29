@@ -4,7 +4,8 @@ const PUBLIC_PATHS = new Set<string>(["/", "/leaderboard"]);
 const PUBLIC_PREFIXES = [
   "/_next",
   "/api/session/login",
-  "/api/events", // auth check happens inside the route
+  "/api/events", // SSE stream — read-only, no auth needed
+  "/events/", // public-read event surfaces (Plan A · Phase 1)
   "/favicon",
   "/badge.svg",
 ];

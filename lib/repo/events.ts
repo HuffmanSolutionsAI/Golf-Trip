@@ -1,14 +1,24 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { getDb } from "@/lib/db";
 import type { EventRow, BrandOverrideRow } from "@/lib/types";
 
-// The single canonical event id for v1. Every repo / API route resolves the
-// active event through getCurrentEventId() so we can swap this out for a
-// request-scoped lookup (path slug, subdomain, etc) without rippling
-// signature changes through the codebase. See docs/PLAN-A-event-engine.md.
+// Default event when no request scope is active. Existing top-level routes
+// (the N&P Invitational at /, /leaderboard, /day1, etc.) resolve to this.
+// Routes under /events/<slug>/* override it via runWithEvent().
 export const DEFAULT_EVENT_ID = "event-1";
 
+const eventStore = new AsyncLocalStorage<{ eventId: string }>();
+
+// Run a function — sync or async — in a request scope where
+// getCurrentEventId() returns the given event id. AsyncLocalStorage
+// propagates through awaits, so async data-fetching inside the callback
+// resolves against the right event without per-call plumbing.
+export function runWithEvent<T>(eventId: string, fn: () => T): T {
+  return eventStore.run({ eventId }, fn);
+}
+
 export function getCurrentEventId(): string {
-  return DEFAULT_EVENT_ID;
+  return eventStore.getStore()?.eventId ?? DEFAULT_EVENT_ID;
 }
 
 export function listEvents(): EventRow[] {

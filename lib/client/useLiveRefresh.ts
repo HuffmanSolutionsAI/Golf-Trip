@@ -9,14 +9,18 @@ type Kind =
   | "scramble_entries"
   | "players";
 
-/**
- * Subscribe to SSE events and call router.refresh() when relevant changes arrive.
- * Pass a list of kinds you care about; if empty, refreshes on every change.
- */
-export function useLiveRefresh(kinds: Kind[] = []) {
+// Subscribe to SSE events and call router.refresh() when relevant changes
+// arrive. `kinds` filters which kinds trigger a refresh (empty = all).
+// `eventId` scopes the SSE subscription to a single event; the existing
+// top-level surfaces (N&P Invitational) leave it undefined and the server
+// defaults to event-1.
+export function useLiveRefresh(kinds: Kind[] = [], eventId?: string) {
   const router = useRouter();
   useEffect(() => {
-    const es = new EventSource("/api/events");
+    const url = eventId
+      ? `/api/events?event=${encodeURIComponent(eventId)}`
+      : "/api/events";
+    const es = new EventSource(url);
     const onChange = (ev: MessageEvent) => {
       try {
         const parsed = JSON.parse(ev.data) as { kind: Kind };
@@ -33,5 +37,5 @@ export function useLiveRefresh(kinds: Kind[] = []) {
       es.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, kinds.join(",")]);
+  }, [router, kinds.join(","), eventId]);
 }

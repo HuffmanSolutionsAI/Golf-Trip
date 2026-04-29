@@ -1,15 +1,20 @@
 // Server-Sent Events stream for realtime fan-out.
 // Client consumes via EventSource; each event body is JSON { event_id, kind }.
-// The stream is scoped to the current event so a future multi-event deploy
-// can fan out per event without listeners cross-contaminating.
+// The stream is scoped to a single event id so a multi-event deploy can fan
+// out per event without listeners cross-contaminating. The event id comes
+// from the ?event=<id> query string; if absent, the default event is used.
 
 import { subscribe } from "@/lib/events";
-import { getCurrentEventId } from "@/lib/repo/events";
+import { DEFAULT_EVENT_ID } from "@/lib/repo/events";
+import type { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const eventId =
+    request.nextUrl.searchParams.get("event") ?? DEFAULT_EVENT_ID;
+
   const encoder = new TextEncoder();
   let closed = false;
   let unsub: (() => void) | null = null;
@@ -33,7 +38,7 @@ export async function GET() {
 
       unsub = subscribe((ev) => {
         send(`event: change\ndata: ${JSON.stringify(ev)}\n\n`);
-      }, getCurrentEventId());
+      }, eventId);
 
       ping = setInterval(() => {
         send(`: ping\n\n`);

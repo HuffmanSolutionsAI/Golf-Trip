@@ -22,6 +22,11 @@ type Props = {
   day3: Day3EntryDisplayRow[];
   rounds: RoundRow[];
   playersByTeam: Record<string, PlayerRow[]>;
+  // Optional explicit event id for SSE subscription. Existing top-level
+  // /leaderboard route omits it (server defaults to event-1); event-scoped
+  // pages under /events/<slug>/leaderboard pass the slug so the view
+  // subscribes to its own event's change stream.
+  eventId?: string;
 };
 
 type TabKey = "overall" | "day1" | "day2" | "day3";
@@ -40,8 +45,9 @@ export function LeaderboardView({
   day3: day3Init,
   rounds,
   playersByTeam,
+  eventId,
 }: Props) {
-  useLiveRefresh(["hole_scores", "rounds"]);
+  useLiveRefresh(["hole_scores", "rounds"], eventId);
   const [overall, setOverall] = useState(overallInit);
   const [day1, setDay1] = useState(day1Init);
   const [day2, setDay2] = useState(day2Init);
