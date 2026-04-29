@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS teams (
 CREATE TABLE IF NOT EXISTS players (
   id         TEXT PRIMARY KEY,
   event_id   TEXT NOT NULL DEFAULT 'event-1' REFERENCES events(id),
+  user_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+  email      TEXT,
   name       TEXT NOT NULL UNIQUE,
   handicap   REAL NOT NULL,
   team_id    TEXT NOT NULL REFERENCES teams(id),
@@ -196,13 +198,60 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS audit_log_occurred_at_idx ON audit_log (occurred_at DESC);
 
 -- ---------------------------------------------------------------------------
--- sessions (our own, since no Supabase auth)
+-- users — auth identity. One user can play in many events. Magic-link auth
+-- (Plan A · Phase 2) creates a row per email. The legacy passcode flow for
+-- the N&P Invitational still operates via session.player_id; new sessions
+-- created by magic-link store session.user_id instead.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS users (
+  id           TEXT PRIMARY KEY,
+  email        TEXT NOT NULL UNIQUE,
+  display_name TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------------------------------------------------------------------------
+-- event_roles — per-event grants. Spectator is implicit for public events
+-- (no row needed); rows here represent commissioners / scorers / players.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS event_roles (
+  event_id   TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       TEXT NOT NULL CHECK (role IN ('commissioner','scorer','player','spectator')),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (event_id, user_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- magic_link_tokens — short-lived tokens emailed to users. The token value
+-- is stored as sha256(token) so a DB leak doesn't yield active tokens.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS magic_link_tokens (
+  token_hash TEXT PRIMARY KEY,
+  email      TEXT NOT NULL,
+  event_id   TEXT REFERENCES events(id) ON DELETE SET NULL,
+  next_path  TEXT,
+  expires_at TEXT NOT NULL,
+  used_at    TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------------------------------------------------------------------------
+-- sessions — either a player session (legacy passcode flow) or a user
+-- session (magic-link). Exactly one of player_id / user_id is set on rows
+-- created by Phase 2 onwards. Legacy rows (created before Phase 2) have
+-- player_id NOT NULL and user_id NULL; the CHECK is enforced only on
+-- fresh installs (legacy DBs use the old schema with player_id NOT NULL
+-- and no constraint on user_id, which is added by ensureColumn).
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sessions (
   id         TEXT PRIMARY KEY,
-  player_id  TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  player_id  TEXT REFERENCES players(id) ON DELETE CASCADE,
+  user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  expires_at TEXT NOT NULL
+  expires_at TEXT NOT NULL,
+  CHECK ((player_id IS NOT NULL) + (user_id IS NOT NULL) = 1)
 );
 
 CREATE INDEX IF NOT EXISTS sessions_player_idx ON sessions (player_id);

@@ -78,6 +78,45 @@ function init(db: Database.Database) {
     "event_id TEXT NOT NULL DEFAULT 'event-1'",
   );
 
+  // Magic-link auth (Plan A · Phase 2). The new tables come from schema.sql;
+  // these columns extend pre-existing tables on legacy DBs.
+  ensureColumn(db, "players", "user_id", "user_id TEXT");
+  ensureColumn(db, "players", "email", "email TEXT");
+  ensureColumn(db, "sessions", "user_id", "user_id TEXT");
+
+  // Legacy DBs created sessions.player_id as NOT NULL with no user_id
+  // column. SQLite can't drop a NOT NULL constraint via ALTER, so detect
+  // and rebuild. The new shape allows either player_id or user_id (XOR).
+  const sessCols = db
+    .prepare("PRAGMA table_info(sessions)")
+    .all() as Array<{ name: string; notnull: number }>;
+  const playerIdCol = sessCols.find((c) => c.name === "player_id");
+  if (playerIdCol && playerIdCol.notnull === 1) {
+    db.exec(`
+      CREATE TABLE sessions_new (
+        id         TEXT PRIMARY KEY,
+        player_id  TEXT REFERENCES players(id) ON DELETE CASCADE,
+        user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        expires_at TEXT NOT NULL,
+        CHECK ((player_id IS NOT NULL) + (user_id IS NOT NULL) = 1)
+      );
+      INSERT INTO sessions_new (id, player_id, user_id, created_at, expires_at)
+        SELECT id, player_id, user_id, created_at, expires_at FROM sessions;
+      DROP TABLE sessions;
+      ALTER TABLE sessions_new RENAME TO sessions;
+    `);
+  }
+
+  // Indexes that depend on Phase-2 columns. Created here so legacy DBs only
+  // try to index the column after ensureColumn (and any rebuild) has run.
+  db.exec(
+    `CREATE INDEX IF NOT EXISTS sessions_player_idx ON sessions (player_id);
+     CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id);
+     CREATE INDEX IF NOT EXISTS event_roles_user_idx ON event_roles (user_id);
+     CREATE INDEX IF NOT EXISTS magic_link_tokens_email_idx ON magic_link_tokens (email);`,
+  );
+
   // Seed only if teams table is empty.
   const { n } = db.prepare("SELECT COUNT(*) AS n FROM teams").get() as { n: number };
   if (n === 0) {

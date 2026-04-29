@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import { getDb, genId, nowIso } from "@/lib/db";
-import type { PlayerRow, SessionRow, TeamRow } from "@/lib/types";
+import type { PlayerRow, SessionRow, TeamRow, UserRow } from "@/lib/types";
 
 const COOKIE_NAME = "np_session";
 const SESSION_DAYS = 30;
@@ -48,6 +48,42 @@ export function openSession(playerId: string): { cookieValue: string; expiresAt:
   return { cookieValue: pack(sessionId), expiresAt };
 }
 
+// Open a session for a magic-link-authenticated user. Mirrors openSession()
+// but stores user_id instead of player_id. Both kinds of sessions share the
+// same cookie so middleware doesn't need a branch.
+export function openUserSession(
+  userId: string,
+): { cookieValue: string; expiresAt: Date } {
+  const db = getDb();
+  const sessionId = genId("sess");
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 3600 * 1000);
+  db.prepare(
+    "INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+  ).run(sessionId, userId, nowIso(), expiresAt.toISOString());
+  return { cookieValue: pack(sessionId), expiresAt };
+}
+
+// Find-or-create a user by email. Magic-link verify calls this so a fresh
+// email becomes a new user the moment the link is clicked.
+export function findOrCreateUserByEmail(
+  email: string,
+  displayName?: string | null,
+): UserRow {
+  const normalized = email.trim().toLowerCase();
+  const db = getDb();
+  const existing = db
+    .prepare("SELECT * FROM users WHERE email = ?")
+    .get(normalized) as UserRow | undefined;
+  if (existing) return existing;
+  const id = genId("usr");
+  db.prepare(
+    "INSERT INTO users (id, email, display_name) VALUES (?, ?, ?)",
+  ).run(id, normalized, displayName ?? null);
+  return db
+    .prepare("SELECT * FROM users WHERE id = ?")
+    .get(id) as UserRow;
+}
+
 export function closeSession(sessionId: string) {
   getDb().prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
 }
@@ -73,7 +109,9 @@ export async function clearSessionCookie() {
   store.set(COOKIE_NAME, "", { expires: new Date(0), path: "/" });
 }
 
-export async function getCurrentPlayer(): Promise<(PlayerRow & { team: TeamRow }) | null> {
+// Read the current session row, regardless of whether it's a player- or
+// user-keyed session. Returns null if the cookie is missing/invalid/expired.
+async function getCurrentSession(): Promise<SessionRow | null> {
   const raw = await readSessionCookie();
   if (!raw) return null;
   const sessionId = unpack(raw);
@@ -87,15 +125,52 @@ export async function getCurrentPlayer(): Promise<(PlayerRow & { team: TeamRow }
     db.prepare("DELETE FROM sessions WHERE id = ?").run(sessionId);
     return null;
   }
-  const player = db
-    .prepare("SELECT * FROM players WHERE id = ?")
-    .get(session.player_id) as PlayerRow | undefined;
-  if (!player) return null;
-  const team = db
-    .prepare("SELECT * FROM teams WHERE id = ?")
-    .get(player.team_id) as TeamRow | undefined;
-  if (!team) return null;
-  return { ...player, team };
+  return session;
+}
+
+export async function getCurrentPlayer(): Promise<(PlayerRow & { team: TeamRow }) | null> {
+  const session = await getCurrentSession();
+  if (!session) return null;
+  const db = getDb();
+
+  // Legacy path: session.player_id is set (passcode flow).
+  if (session.player_id) {
+    const player = db
+      .prepare("SELECT * FROM players WHERE id = ?")
+      .get(session.player_id) as PlayerRow | undefined;
+    if (!player) return null;
+    const team = db
+      .prepare("SELECT * FROM teams WHERE id = ?")
+      .get(player.team_id) as TeamRow | undefined;
+    if (!team) return null;
+    return { ...player, team };
+  }
+
+  // New path: session.user_id is set (magic-link flow). The user "is" a
+  // player for the active event when player.user_id matches.
+  if (session.user_id) {
+    const player = db
+      .prepare("SELECT * FROM players WHERE user_id = ? LIMIT 1")
+      .get(session.user_id) as PlayerRow | undefined;
+    if (!player) return null;
+    const team = db
+      .prepare("SELECT * FROM teams WHERE id = ?")
+      .get(player.team_id) as TeamRow | undefined;
+    if (!team) return null;
+    return { ...player, team };
+  }
+
+  return null;
+}
+
+export async function getCurrentUser(): Promise<UserRow | null> {
+  const session = await getCurrentSession();
+  if (!session?.user_id) return null;
+  return (
+    (getDb()
+      .prepare("SELECT * FROM users WHERE id = ?")
+      .get(session.user_id) as UserRow) ?? null
+  );
 }
 
 export async function getCurrentSessionId(): Promise<string | null> {

@@ -37,6 +37,8 @@ export type TeamRow = {
 export type PlayerRow = {
   id: string;
   event_id: string;
+  user_id: string | null;
+  email: string | null;
   name: string;
   handicap: number;
   team_id: string;
@@ -132,9 +134,35 @@ export type AuditLogRow = {
 
 export type SessionRow = {
   id: string;
-  player_id: string;
+  player_id: string | null;
+  user_id: string | null;
   created_at: string;
   expires_at: string;
+};
+
+export type UserRow = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EventRoleRow = {
+  event_id: string;
+  user_id: string;
+  role: "commissioner" | "scorer" | "player" | "spectator";
+  created_at: string;
+};
+
+export type MagicLinkTokenRow = {
+  token_hash: string;
+  email: string;
+  event_id: string | null;
+  next_path: string | null;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
 };
 
 export type TeeGroupRow = {
