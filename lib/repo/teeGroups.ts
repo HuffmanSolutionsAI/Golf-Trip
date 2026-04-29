@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "@/lib/db";
+import { getCurrentEventId } from "@/lib/repo/events";
 import type { TeeGroupRow } from "@/lib/types";
 
 export type TeeGroupWithMembers = TeeGroupRow & {
@@ -10,9 +11,12 @@ export type TeeGroupWithMembers = TeeGroupRow & {
 export function listTeeGroups(): TeeGroupRow[] {
   return getDb()
     .prepare(
-      "SELECT * FROM tee_groups ORDER BY round_id, group_number",
+      `SELECT g.* FROM tee_groups g
+         JOIN rounds r ON r.id = g.round_id
+         WHERE r.event_id = ?
+         ORDER BY g.round_id, g.group_number`,
     )
-    .all() as TeeGroupRow[];
+    .all(getCurrentEventId()) as TeeGroupRow[];
 }
 
 export function listTeeGroupsForRound(roundId: string): TeeGroupRow[] {

@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb, genId, nowIso } from "@/lib/db";
+import { getCurrentEventId } from "@/lib/repo/events";
 import type {
   HoleScoreRow,
   MatchRow,
@@ -26,7 +27,13 @@ export function listScoresForScrambleEntry(entryId: string): HoleScoreRow[] {
 }
 
 export function listAllScores(): HoleScoreRow[] {
-  return getDb().prepare("SELECT * FROM hole_scores").all() as HoleScoreRow[];
+  return getDb()
+    .prepare(
+      `SELECT hs.* FROM hole_scores hs
+         JOIN rounds r ON r.id = hs.round_id
+         WHERE r.event_id = ?`,
+    )
+    .all(getCurrentEventId()) as HoleScoreRow[];
 }
 
 export function upsertPlayerScore(args: {
@@ -88,7 +95,14 @@ export function deleteScore(id: string) {
 // --- Matches / scramble entries ---
 
 export function listMatches(): MatchRow[] {
-  return getDb().prepare("SELECT * FROM matches ORDER BY match_number").all() as MatchRow[];
+  return getDb()
+    .prepare(
+      `SELECT m.* FROM matches m
+         JOIN rounds r ON r.id = m.round_id
+         WHERE r.event_id = ?
+         ORDER BY m.match_number`,
+    )
+    .all(getCurrentEventId()) as MatchRow[];
 }
 
 export function getMatch(id: string): MatchRow | null {
@@ -102,7 +116,13 @@ export function listScrambleEntries(roundId?: string): ScrambleEntryRow[] {
       .prepare("SELECT * FROM scramble_entries WHERE round_id = ?")
       .all(roundId) as ScrambleEntryRow[];
   }
-  return getDb().prepare("SELECT * FROM scramble_entries").all() as ScrambleEntryRow[];
+  return getDb()
+    .prepare(
+      `SELECT se.* FROM scramble_entries se
+         JOIN rounds r ON r.id = se.round_id
+         WHERE r.event_id = ?`,
+    )
+    .all(getCurrentEventId()) as ScrambleEntryRow[];
 }
 
 export function getScrambleEntry(id: string): ScrambleEntryRow | null {
@@ -113,7 +133,14 @@ export function getScrambleEntry(id: string): ScrambleEntryRow | null {
 }
 
 export function listScrambleParticipants(): ScrambleParticipantRow[] {
-  return getDb().prepare("SELECT * FROM scramble_participants").all() as ScrambleParticipantRow[];
+  return getDb()
+    .prepare(
+      `SELECT sp.* FROM scramble_participants sp
+         JOIN scramble_entries se ON se.id = sp.scramble_entry_id
+         JOIN rounds r ON r.id = se.round_id
+         WHERE r.event_id = ?`,
+    )
+    .all(getCurrentEventId()) as ScrambleParticipantRow[];
 }
 
 export function listParticipantsForEntry(entryId: string): ScrambleParticipantRow[] {

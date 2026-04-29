@@ -1,7 +1,32 @@
 // Shared TS types mirroring the SQLite schema.
 
+export type EventRow = {
+  id: string;
+  name: string;
+  subtitle: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  visibility: "public" | "unlisted" | "private";
+  commissioner_user_id: string | null;
+  handicap_source: "manual" | "ghin" | "whs";
+  brand_override_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BrandOverrideRow = {
+  id: string;
+  name: string;
+  tokens_json: string;
+  wordmark: string | null;
+  hero_copy: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TeamRow = {
   id: string;
+  event_id: string;
   name: string;
   display_color: string;
   sort_order: number;
@@ -11,6 +36,7 @@ export type TeamRow = {
 
 export type PlayerRow = {
   id: string;
+  event_id: string;
   name: string;
   handicap: number;
   team_id: string;
@@ -22,6 +48,7 @@ export type PlayerRow = {
 
 export type RoundRow = {
   id: string;
+  event_id: string;
   day: 1 | 2 | 3;
   date: string;
   course_name: string;
@@ -84,6 +111,7 @@ export type HoleScoreRow = {
 
 export type ChatMessageRow = {
   id: string;
+  event_id: string;
   player_id: string | null;
   body: string;
   kind: "human" | "system";
@@ -92,6 +120,7 @@ export type ChatMessageRow = {
 
 export type AuditLogRow = {
   id: string;
+  event_id: string;
   player_id: string | null;
   action: string;
   entity_type: string | null;
