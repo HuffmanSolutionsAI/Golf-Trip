@@ -89,6 +89,57 @@ function init(db: Database.Database) {
   // course_name snapshot without back-referencing a library row.
   ensureColumn(db, "rounds", "course_id", "course_id TEXT");
 
+  // Legacy DBs created rounds with `day INTEGER UNIQUE`, which prevents a
+  // second event from reusing day numbers. SQLite can't drop a column-level
+  // UNIQUE without rebuilding the table. Detect via the create SQL and
+  // rebuild to UNIQUE(event_id, day) — matches schema.sql for fresh
+  // installs. (Plan A · Phase 3c)
+  const roundsSql = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='rounds'")
+    .get() as { sql: string } | undefined;
+  if (
+    roundsSql &&
+    !roundsSql.sql.includes("UNIQUE(event_id") &&
+    !roundsSql.sql.includes("UNIQUE (event_id")
+  ) {
+    // Per SQLite's "12-step ALTER TABLE" recipe: turn FK enforcement off,
+    // rebuild, FK-check, turn it back on. PRAGMA foreign_keys can't be
+    // changed inside a transaction, so the toggle bookends the rebuild.
+    db.pragma("foreign_keys = OFF");
+    try {
+      db.exec(`
+        CREATE TABLE rounds_new (
+          id          TEXT PRIMARY KEY,
+          event_id    TEXT NOT NULL DEFAULT 'event-1',
+          course_id   TEXT,
+          day         INTEGER NOT NULL CHECK (day IN (1,2,3)),
+          date        TEXT NOT NULL,
+          course_name TEXT NOT NULL,
+          total_par   INTEGER NOT NULL,
+          format      TEXT NOT NULL CHECK (format IN ('singles','scramble_2man','scramble_4man')),
+          tee_time    TEXT NOT NULL,
+          is_locked   INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(event_id, day)
+        );
+        INSERT INTO rounds_new (id, event_id, course_id, day, date, course_name, total_par, format, tee_time, is_locked, created_at, updated_at)
+          SELECT id, event_id, course_id, day, date, course_name, total_par, format, tee_time, is_locked, created_at, updated_at
+          FROM rounds;
+        DROP TABLE rounds;
+        ALTER TABLE rounds_new RENAME TO rounds;
+      `);
+      const fkProblems = db.prepare("PRAGMA foreign_key_check").all();
+      if (fkProblems.length > 0) {
+        throw new Error(
+          `rounds rebuild left dangling FKs: ${JSON.stringify(fkProblems)}`,
+        );
+      }
+    } finally {
+      db.pragma("foreign_keys = ON");
+    }
+  }
+
   // Legacy DBs created sessions.player_id as NOT NULL with no user_id
   // column. SQLite can't drop a NOT NULL constraint via ALTER, so detect
   // and rebuild. The new shape allows either player_id or user_id (XOR).

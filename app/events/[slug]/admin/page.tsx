@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { checkCommissioner } from "@/lib/auth/eventPermissions";
 import { runWithEvent } from "@/lib/repo/events";
 import { listPlayers, listTeams } from "@/lib/repo/players";
-import { TeamForm, PlayerForm } from "./AdminForms";
+import { listRounds } from "@/lib/repo/rounds";
+import { listCourses } from "@/lib/repo/courses";
+import { formatIdForRound, FORMATS } from "@/lib/formats/registry";
+import { formatTeeTime, toRoman } from "@/lib/utils";
+import { TeamForm, PlayerForm, RoundForm } from "./AdminForms";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +50,13 @@ export default async function EventAdminPage({
   }
 
   const { event } = guard;
-  const { teams, players } = runWithEvent(slug, () => ({
+  const { teams, players, rounds } = runWithEvent(slug, () => ({
     teams: listTeams(),
     players: listPlayers(),
+    rounds: listRounds(),
   }));
+  const courses = listCourses();
+  const usedDays = new Set(rounds.map((r) => r.day));
 
   const playersByTeam = new Map<string, typeof players>();
   for (const p of players) {
@@ -247,6 +254,80 @@ export default async function EventAdminPage({
           {teams.length > 0 && (
             <div className="mt-5">
               <PlayerForm slug={slug} teams={teams} />
+            </div>
+          )}
+        </Section>
+
+        <Section
+          title="Rounds"
+          count={rounds.length}
+          empty={
+            usedDays.size >= 3
+              ? "All three days are scheduled."
+              : "No rounds yet. Pick a course and a format to add the first."
+          }
+        >
+          {rounds.length > 0 && (
+            <ul className="mt-2">
+              {rounds.map((r) => {
+                const fmt = FORMATS[formatIdForRound(r)];
+                return (
+                  <li
+                    key={r.id}
+                    className="grid items-center gap-3 py-3"
+                    style={{
+                      gridTemplateColumns:
+                        "30px minmax(0,1fr) auto auto",
+                      borderBottom: "1px solid var(--color-rule-cream)",
+                    }}
+                  >
+                    <span
+                      className="font-mono"
+                      style={{ fontSize: 14, color: "var(--color-gold)" }}
+                    >
+                      {toRoman(r.day)}
+                    </span>
+                    <div className="min-w-0">
+                      <div
+                        className="font-display text-[var(--color-navy)] truncate"
+                        style={{ fontSize: 18, lineHeight: 1.15 }}
+                      >
+                        {r.course_name}
+                      </div>
+                      <div
+                        className="font-body-serif italic mt-0.5"
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-stone)",
+                        }}
+                      >
+                        {fmt.short_label} · par {r.total_par}
+                      </div>
+                    </div>
+                    <span
+                      className="font-mono text-right"
+                      style={{ fontSize: 12, color: "var(--color-stone)" }}
+                    >
+                      {r.date}
+                    </span>
+                    <span
+                      className="font-mono text-right"
+                      style={{ fontSize: 12, color: "var(--color-stone)" }}
+                    >
+                      {formatTeeTime(r.tee_time)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {usedDays.size < 3 && courses.length > 0 && (
+            <div className="mt-5">
+              <RoundForm
+                slug={slug}
+                courses={courses}
+                usedDays={Array.from(usedDays)}
+              />
             </div>
           )}
         </Section>

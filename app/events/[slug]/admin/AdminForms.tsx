@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { TeamRow } from "@/lib/types";
+import type { CourseRow, TeamRow } from "@/lib/types";
+import { listFormats } from "@/lib/formats/registry";
 
 const fieldStyle: React.CSSProperties = {
   fontSize: 15,
@@ -282,6 +283,171 @@ export function PlayerForm({
       >
         {busy ? "Adding…" : "Add player"}
       </button>
+      {error && (
+        <div
+          className="font-body-serif italic w-full"
+          style={{ fontSize: 12, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </div>
+      )}
+    </form>
+  );
+}
+
+export function RoundForm({
+  slug,
+  courses,
+  usedDays,
+}: {
+  slug: string;
+  courses: CourseRow[];
+  usedDays: number[];
+}) {
+  const router = useRouter();
+  const formats = listFormats();
+  const freeDays = ([1, 2, 3] as const).filter((d) => !usedDays.includes(d));
+  const [day, setDay] = useState<number>(freeDays[0] ?? 1);
+  const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
+  const [formatId, setFormatId] = useState(formats[0]?.id ?? "match-play-net");
+  const [date, setDate] = useState("");
+  const [teeTime, setTeeTime] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/rounds`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          day,
+          course_id: courseId,
+          format_id: formatId,
+          date,
+          tee_time: teeTime,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not add round.");
+        setBusy(false);
+        return;
+      }
+      // Reset to next free day for fast successive adds.
+      const justUsed = new Set([...usedDays, day]);
+      const nextFree = ([1, 2, 3] as const).find((d) => !justUsed.has(d));
+      if (nextFree) setDay(nextFree);
+      setDate("");
+      setTeeTime("");
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error. Try again.");
+      setBusy(false);
+    }
+  }
+
+  const selectedFormat = formats.find((f) => f.id === formatId);
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
+      <Field label="Day">
+        <select
+          required
+          value={day}
+          onChange={(e) => setDay(Number(e.target.value))}
+          className="font-mono px-3 py-2 w-[80px]"
+          style={fieldStyle}
+        >
+          {freeDays.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Course">
+        <select
+          required
+          value={courseId}
+          onChange={(e) => setCourseId(e.target.value)}
+          className="font-body-serif px-3 py-2 w-[260px]"
+          style={fieldStyle}
+        >
+          {courses.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} · par {c.total_par}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Format">
+        <select
+          required
+          value={formatId}
+          onChange={(e) => setFormatId(e.target.value as typeof formatId)}
+          className="font-body-serif px-3 py-2 w-[220px]"
+          style={fieldStyle}
+        >
+          {formats.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.display_name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Date">
+        <input
+          type="date"
+          required
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="font-mono px-3 py-2"
+          style={fieldStyle}
+        />
+      </Field>
+      <Field label="Tee time">
+        <input
+          type="time"
+          required
+          value={teeTime}
+          onChange={(e) => setTeeTime(e.target.value)}
+          className="font-mono px-3 py-2 w-[120px]"
+          style={fieldStyle}
+        />
+      </Field>
+      <button
+        type="submit"
+        disabled={busy || !courseId || !date || !teeTime}
+        className="font-ui uppercase px-4 py-2.5"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.28em",
+          color: "var(--color-cream)",
+          background: "var(--color-navy)",
+          fontWeight: 600,
+          opacity: busy || !courseId || !date || !teeTime ? 0.5 : 1,
+        }}
+      >
+        {busy ? "Adding…" : "Add round"}
+      </button>
+      {selectedFormat && (
+        <p
+          className="font-body-serif italic w-full mt-1"
+          style={{
+            fontSize: 12,
+            color: "var(--color-stone)",
+            opacity: 0.75,
+          }}
+        >
+          {selectedFormat.blurb}
+        </p>
+      )}
       {error && (
         <div
           className="font-body-serif italic w-full"
