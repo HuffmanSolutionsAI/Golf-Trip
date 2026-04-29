@@ -88,20 +88,10 @@ export default function Day1IndexPage() {
                     >
                       {toRoman(g.group_number)}
                     </span>
-                    <span
-                      className="font-display text-[var(--color-navy)]"
-                      style={{ fontSize: 26 }}
-                    >
-                      Tee {toRoman(g.group_number)}
-                    </span>
                     {g.scheduled_time && (
                       <span
-                        className="font-ui uppercase"
-                        style={{
-                          fontSize: 10,
-                          letterSpacing: "0.28em",
-                          color: "var(--color-stone)",
-                        }}
+                        className="font-display text-[var(--color-navy)]"
+                        style={{ fontSize: 26 }}
                       >
                         {formatTeeTime(g.scheduled_time)}
                       </span>

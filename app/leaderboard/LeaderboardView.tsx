@@ -176,10 +176,8 @@ function OverallTab({
   return (
     <div>
       <div
-        className="grid items-center px-3 py-2.5"
+        className="grid items-center px-3 py-2.5 grid-cols-[40px_minmax(0,1fr)_60px] md:grid-cols-[60px_minmax(0,2fr)_60px_60px_60px_100px]"
         style={{
-          gridTemplateColumns:
-            "60px minmax(0,2fr) 60px 60px 60px 100px",
           fontFamily: "var(--font-ui)",
           fontSize: 10,
           letterSpacing: "0.22em",
@@ -191,9 +189,9 @@ function OverallTab({
       >
         <span>Pos</span>
         <span>Team</span>
-        <span className="text-right">D·I</span>
-        <span className="text-right">D·II</span>
-        <span className="text-right">D·III</span>
+        <span className="hidden md:block text-right">D·I</span>
+        <span className="hidden md:block text-right">D·II</span>
+        <span className="hidden md:block text-right">D·III</span>
         <span className="text-right">Pts</span>
       </div>
       {rows.map((row) => {
@@ -207,10 +205,8 @@ function OverallTab({
           <Link
             key={row.team_id}
             href={`/teams/${row.team_id}`}
-            className="grid items-center px-3 py-5 relative"
+            className="grid items-center px-3 py-5 relative grid-cols-[40px_minmax(0,1fr)_60px] md:grid-cols-[60px_minmax(0,2fr)_60px_60px_60px_100px]"
             style={{
-              gridTemplateColumns:
-                "60px minmax(0,2fr) 60px 60px 60px 100px",
               borderBottom: "1px solid var(--color-rule-cream)",
               background: isLeader
                 ? "rgba(165,136,89,0.08)"
@@ -224,11 +220,10 @@ function OverallTab({
               />
             )}
             <span
-              className="font-mono"
+              className="font-mono pl-2 md:pl-3"
               style={{
                 fontSize: 22,
                 color: "var(--color-navy)",
-                paddingLeft: 12,
               }}
             >
               {row.rank}
@@ -244,40 +239,46 @@ function OverallTab({
                   }}
                 />
                 <span
-                  className="font-display text-[var(--color-navy)] truncate"
-                  style={{ fontSize: 26 }}
+                  className="font-display text-[var(--color-navy)] truncate text-[22px] md:text-[26px]"
                 >
                   {row.name}
                 </span>
               </div>
               <div
                 className="font-body-serif italic mt-1.5 truncate"
-                style={{ fontSize: 13, color: "var(--color-stone)" }}
+                style={{ fontSize: 12, color: "var(--color-stone)" }}
               >
                 {memberNames.join(" · ")}
               </div>
+              <div
+                className="md:hidden font-mono mt-1"
+                style={{ fontSize: 11, color: "var(--color-stone)" }}
+              >
+                D·I {row.day1_points} · D·II {row.day2_points} · D·III{" "}
+                {row.day3_points || "—"}
+              </div>
             </div>
             <span
-              className="font-mono text-right"
+              className="hidden md:block font-mono text-right"
               style={{ fontSize: 16, color: "var(--color-navy)" }}
             >
               {row.day1_points}
             </span>
             <span
-              className="font-mono text-right"
+              className="hidden md:block font-mono text-right"
               style={{ fontSize: 16, color: "var(--color-navy)" }}
             >
               {row.day2_points}
             </span>
             <span
-              className="font-mono text-right"
+              className="hidden md:block font-mono text-right"
               style={{ fontSize: 16, color: "var(--color-stone)" }}
             >
               {row.day3_points || "—"}
             </span>
             <span
-              className="font-mono text-right"
-              style={{ fontSize: 32, color: "var(--color-navy)" }}
+              className="font-mono text-right text-[26px] md:text-[32px]"
+              style={{ color: "var(--color-navy)" }}
             >
               {row.total_points}
             </span>
@@ -285,10 +286,7 @@ function OverallTab({
         );
       })}
       <div className="text-center pt-5 pb-2">
-        <span
-          className="eyebrow-stone"
-          style={{ fontSize: 9 }}
-        >
+        <span className="eyebrow-stone" style={{ fontSize: 9 }}>
           UPDATED ON THE HALF HOUR
         </span>
       </div>
