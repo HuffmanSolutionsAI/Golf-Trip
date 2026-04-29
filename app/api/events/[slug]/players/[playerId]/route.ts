@@ -107,3 +107,92 @@ export async function PATCH(
   emitChange("players", slug);
   return NextResponse.json({ ok: true });
 }
+
+// Delete a player. Refuses if the player is still tied to scoring data —
+// in any match, scramble entry, or has any hole_scores authored or
+// entered. The commissioner has to clean those up first (delete matches /
+// auto-fill is reversible via group delete) so destructive cascades stay
+// visible. Sessions cascade via FK; tee_groups.scorer_player_id and the
+// historical references on audit_log/chat_messages are nulled out so the
+// trail survives without dangling FKs. (Plan A · Phase 3i)
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ slug: string; playerId: string }> },
+) {
+  const { slug, playerId } = await params;
+  const guard = await checkCommissioner(slug);
+  if (!guard.ok) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+
+  const db = getDb();
+  const player = db
+    .prepare("SELECT id, name FROM players WHERE id = ? AND event_id = ?")
+    .get(playerId, slug) as { id: string; name: string } | undefined;
+  if (!player) {
+    return NextResponse.json({ error: "Unknown player." }, { status: 404 });
+  }
+
+  const inMatches = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM matches WHERE player1_id = ? OR player2_id = ?",
+    )
+    .get(playerId, playerId) as { n: number };
+  if (inMatches.n > 0) {
+    return NextResponse.json(
+      {
+        error: `${player.name} is in ${inMatches.n} match${inMatches.n === 1 ? "" : "es"}. Delete the matches first.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  const inEntries = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM scramble_participants WHERE player_id = ?",
+    )
+    .get(playerId) as { n: number };
+  if (inEntries.n > 0) {
+    return NextResponse.json(
+      {
+        error: `${player.name} is on ${inEntries.n} scramble entr${inEntries.n === 1 ? "y" : "ies"}. Delete the round's entries first (delete the tee group, then the round, or use the round detail page).`,
+      },
+      { status: 409 },
+    );
+  }
+
+  const scoresAuthored = db
+    .prepare("SELECT COUNT(*) AS n FROM hole_scores WHERE player_id = ?")
+    .get(playerId) as { n: number };
+  const scoresEntered = db
+    .prepare("SELECT COUNT(*) AS n FROM hole_scores WHERE entered_by = ?")
+    .get(playerId) as { n: number };
+  if (scoresAuthored.n + scoresEntered.n > 0) {
+    return NextResponse.json(
+      {
+        error: `${player.name} has ${scoresAuthored.n} score${
+          scoresAuthored.n === 1 ? "" : "s"
+        } recorded and entered ${scoresEntered.n}. Clear those before deleting the player.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare(
+      "UPDATE tee_groups SET scorer_player_id = NULL, updated_at = datetime('now') WHERE scorer_player_id = ?",
+    ).run(playerId);
+    db.prepare(
+      "UPDATE audit_log SET player_id = NULL WHERE player_id = ?",
+    ).run(playerId);
+    db.prepare(
+      "UPDATE chat_messages SET player_id = NULL WHERE player_id = ?",
+    ).run(playerId);
+    // sessions FK has ON DELETE CASCADE; rows die with the player.
+    db.prepare("DELETE FROM players WHERE id = ?").run(playerId);
+  });
+  tx();
+
+  emitChange("players", slug);
+  return NextResponse.json({ ok: true });
+}

@@ -885,20 +885,23 @@ export function TeamRow({
       >
         #{sortOrder}
       </span>
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="font-ui uppercase px-2 py-1"
-        style={{
-          fontSize: 9,
-          letterSpacing: "0.22em",
-          color: "var(--color-stone)",
-          border: "1px solid var(--color-rule-cream)",
-          background: "transparent",
-        }}
-      >
-        Edit
-      </button>
+      <span className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="font-ui uppercase px-2 py-1"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: "var(--color-stone)",
+            border: "1px solid var(--color-rule-cream)",
+            background: "transparent",
+          }}
+        >
+          Edit
+        </button>
+        <TeamDeleteButton slug={slug} teamId={team.id} teamName={team.name} />
+      </span>
     </div>
   );
 }
@@ -1114,20 +1117,27 @@ export function PlayerRow({
       >
         HCP {player.handicap}
       </span>
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="font-ui uppercase px-2 py-1"
-        style={{
-          fontSize: 9,
-          letterSpacing: "0.22em",
-          color: "var(--color-stone)",
-          border: "1px solid var(--color-rule-cream)",
-          background: "transparent",
-        }}
-      >
-        Edit
-      </button>
+      <span className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="font-ui uppercase px-2 py-1"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: "var(--color-stone)",
+            border: "1px solid var(--color-rule-cream)",
+            background: "transparent",
+          }}
+        >
+          Edit
+        </button>
+        <PlayerDeleteButton
+          slug={slug}
+          playerId={player.id}
+          playerName={player.name}
+        />
+      </span>
     </div>
   );
 }
@@ -1335,6 +1345,204 @@ export function TeeGroupTimeInput({
         <span
           className="font-body-serif italic mt-1"
           style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tier 2 destructive deletes (Plan A · Phase 3i)
+// ---------------------------------------------------------------------------
+
+function DeleteIconButton({
+  onClick,
+  busy,
+  title,
+}: {
+  onClick: () => void;
+  busy: boolean;
+  title: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      title={title}
+      className="font-ui uppercase px-2 py-1"
+      style={{
+        fontSize: 9,
+        letterSpacing: "0.22em",
+        color: "var(--color-oxblood)",
+        border: "1px solid var(--color-rule-cream)",
+        background: "transparent",
+        opacity: busy ? 0.5 : 1,
+      }}
+    >
+      ✕
+    </button>
+  );
+}
+
+export function TeamDeleteButton({
+  slug,
+  teamId,
+  teamName,
+}: {
+  slug: string;
+  teamId: string;
+  teamName: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    if (!confirm(`Delete the team "${teamName}"?`)) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/teams/${teamId}`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not delete.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <DeleteIconButton onClick={onClick} busy={busy} title="Delete team" />
+      {error && (
+        <span
+          className="font-body-serif italic text-right"
+          style={{ fontSize: 11, color: "var(--color-oxblood)", maxWidth: 240 }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function PlayerDeleteButton({
+  slug,
+  playerId,
+  playerName,
+}: {
+  slug: string;
+  playerId: string;
+  playerName: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    if (!confirm(`Delete ${playerName}?`)) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/players/${playerId}`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not delete.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <DeleteIconButton onClick={onClick} busy={busy} title="Delete player" />
+      {error && (
+        <span
+          className="font-body-serif italic text-right"
+          style={{ fontSize: 11, color: "var(--color-oxblood)", maxWidth: 280 }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function RoundDeleteButton({
+  slug,
+  roundId,
+  day,
+  courseName,
+}: {
+  slug: string;
+  roundId: string;
+  day: number;
+  courseName: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    if (
+      !confirm(
+        `Delete Day ${day} (${courseName})? This erases every match, scramble entry, hole score, and tee group on this round. Cannot be undone.`,
+      )
+    )
+      return;
+    const typed = prompt('Type "DELETE" to confirm.');
+    if (typed !== "DELETE") return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/rounds/${roundId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not delete.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end gap-1">
+      <DeleteIconButton onClick={onClick} busy={busy} title="Delete round" />
+      {error && (
+        <span
+          className="font-body-serif italic text-right"
+          style={{ fontSize: 11, color: "var(--color-oxblood)", maxWidth: 240 }}
         >
           {error}
         </span>

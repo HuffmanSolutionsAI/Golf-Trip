@@ -18,6 +18,7 @@ import {
   RevokeRoleButton,
   TeamRow,
   PlayerRow,
+  RoundDeleteButton,
 } from "./AdminForms";
 
 type RoleListing = {
@@ -311,7 +312,7 @@ export default async function EventAdminPage({
                     className="grid items-center gap-3 py-3"
                     style={{
                       gridTemplateColumns:
-                        "30px minmax(0,1fr) auto auto auto",
+                        "30px minmax(0,1fr) auto auto auto auto",
                       borderBottom: "1px solid var(--color-rule-cream)",
                     }}
                   >
@@ -360,6 +361,12 @@ export default async function EventAdminPage({
                     ) : (
                       <span />
                     )}
+                    <RoundDeleteButton
+                      slug={slug}
+                      roundId={r.id}
+                      day={r.day}
+                      courseName={r.course_name}
+                    />
                   </li>
                 );
               })}

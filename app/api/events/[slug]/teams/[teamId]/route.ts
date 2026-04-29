@@ -74,3 +74,54 @@ export async function PATCH(
   emitChange("players", slug);
   return NextResponse.json({ ok: true });
 }
+
+// Delete a team. Refuses if any players or scramble_entries still point
+// at this team — commissioner has to clear the team's roster first (and
+// any rounds that have entries on this team). Keeps blast radius
+// visible. (Plan A · Phase 3i)
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ slug: string; teamId: string }> },
+) {
+  const { slug, teamId } = await params;
+  const guard = await checkCommissioner(slug);
+  if (!guard.ok) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+
+  const db = getDb();
+  const team = db
+    .prepare("SELECT id, name FROM teams WHERE id = ? AND event_id = ?")
+    .get(teamId, slug) as { id: string; name: string } | undefined;
+  if (!team) {
+    return NextResponse.json({ error: "Unknown team." }, { status: 404 });
+  }
+
+  const playerCount = db
+    .prepare("SELECT COUNT(*) AS n FROM players WHERE team_id = ?")
+    .get(teamId) as { n: number };
+  if (playerCount.n > 0) {
+    return NextResponse.json(
+      {
+        error: `${team.name} still has ${playerCount.n} player${playerCount.n === 1 ? "" : "s"}. Move or delete them first.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  const entryCount = db
+    .prepare("SELECT COUNT(*) AS n FROM scramble_entries WHERE team_id = ?")
+    .get(teamId) as { n: number };
+  if (entryCount.n > 0) {
+    return NextResponse.json(
+      {
+        error: `${team.name} is on ${entryCount.n} scramble entr${entryCount.n === 1 ? "y" : "ies"}. Delete those rounds first.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  db.prepare("DELETE FROM teams WHERE id = ?").run(teamId);
+  emitChange("players", slug);
+  return NextResponse.json({ ok: true });
+}
