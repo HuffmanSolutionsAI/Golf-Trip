@@ -4,8 +4,10 @@ import { runWithEvent } from "@/lib/repo/events";
 import { getSideBet, listEntries } from "@/lib/repo/sideBets";
 import { listHoles } from "@/lib/repo/rounds";
 import { getPlayer } from "@/lib/repo/players";
+import { getDay1MatchState } from "@/lib/repo/standings";
 import { getDb } from "@/lib/db";
 import { computeSkins, suggestSkinsPayouts } from "@/lib/scoring/skins";
+import { computePress } from "@/lib/scoring/presses";
 import type { HoleScoreRow, PlayerRow } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -31,12 +33,55 @@ export async function POST(
     if (bet.status === "settled") {
       return { error: "Bet is already settled.", status: 409 } as const;
     }
-    if (bet.type !== "skins") {
+    if (bet.type !== "skins" && bet.type !== "presses") {
       return {
-        error: `Auto-compute isn't implemented for '${bet.type}' yet — settle manually.`,
+        error: `Auto-compute isn't implemented for '${bet.type}' — settle manually.`,
         status: 400,
       } as const;
     }
+
+    // ---- Presses: read match state, allocate by winner. ----
+    if (bet.type === "presses") {
+      let matchId: string | null = null;
+      if (bet.rules_json) {
+        try {
+          const r = JSON.parse(bet.rules_json) as { match_id?: string };
+          if (typeof r.match_id === "string") matchId = r.match_id;
+        } catch {
+          /* no-op */
+        }
+      }
+      if (!matchId) {
+        return {
+          error: "Press bet has no match attached.",
+          status: 400,
+        } as const;
+      }
+      const state = getDay1MatchState(matchId);
+      if (!state) {
+        return {
+          error: "Press: match state unavailable.",
+          status: 400,
+        } as const;
+      }
+      const entries = listEntries(bet.id);
+      const pot = bet.buy_in_cents * entries.length;
+      const press = computePress({ state, pot_cents: pot });
+      return {
+        ok: true as const,
+        bet_id: bet.id,
+        bet_type: "presses" as const,
+        match_id: matchId,
+        pot_cents: pot,
+        match_status: press.status,
+        net_diff: press.net_diff,
+        winner_player_id: press.winner_player_id,
+        unallocated_cents: press.unallocated_cents,
+        payouts: press.payouts,
+      };
+    }
+
+    // ---- Skins: hole-by-hole. ----
     if (!bet.round_id) {
       return {
         error: "Skins bets must be tied to a round before computing.",

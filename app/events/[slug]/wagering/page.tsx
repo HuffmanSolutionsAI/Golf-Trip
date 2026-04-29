@@ -190,12 +190,41 @@ function BetGroup({
                       color: "var(--color-stone)",
                     }}
                   >
-                    {round
-                      ? `Day ${round.day} · ${round.course_name}`
-                      : "Event-wide"}
-                    {b.buy_in_cents > 0
-                      ? ` · ${fmt$(b.buy_in_cents)} buy-in`
-                      : " · no buy-in"}
+                    {(() => {
+                      const labels: string[] = [];
+                      labels.push(
+                        b.type === "skins"
+                          ? "Skins"
+                          : b.type === "presses"
+                            ? "Press"
+                            : b.type === "ctp"
+                              ? "Closest to pin"
+                              : b.type === "long_drive"
+                                ? "Long drive"
+                                : "Custom",
+                      );
+                      let rules: { hole_number?: number; score_type?: string } = {};
+                      try {
+                        if (b.rules_json) rules = JSON.parse(b.rules_json);
+                      } catch {
+                        /* ignore */
+                      }
+                      if (rules.hole_number) labels.push(`Hole ${rules.hole_number}`);
+                      if (round) {
+                        labels.push(`Day ${round.day} · ${round.course_name}`);
+                      } else {
+                        labels.push("Event-wide");
+                      }
+                      if (b.type === "skins" && rules.score_type) {
+                        labels.push(rules.score_type);
+                      }
+                      labels.push(
+                        b.buy_in_cents > 0
+                          ? `${fmt$(b.buy_in_cents)} buy-in`
+                          : "no buy-in",
+                      );
+                      return labels.join(" · ");
+                    })()}
                   </div>
                 </div>
                 <div

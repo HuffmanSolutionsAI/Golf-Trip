@@ -447,9 +447,44 @@ export default async function EventAdminPage({
                           color: "var(--color-stone)",
                         }}
                       >
-                        {round
-                          ? `Day ${round.day} · ${round.course_name}`
-                          : "Event-wide"}
+                        {(() => {
+                          const labels: string[] = [];
+                          labels.push(
+                            b.type === "skins"
+                              ? "Skins"
+                              : b.type === "presses"
+                                ? "Press"
+                                : b.type === "ctp"
+                                  ? "Closest to pin"
+                                  : b.type === "long_drive"
+                                    ? "Long drive"
+                                    : "Custom",
+                          );
+                          let rules: { hole_number?: number; match_id?: string; score_type?: string } = {};
+                          try {
+                            if (b.rules_json) rules = JSON.parse(b.rules_json);
+                          } catch {
+                            /* ignore */
+                          }
+                          if (rules.hole_number) labels.push(`Hole ${rules.hole_number}`);
+                          if (rules.match_id) {
+                            const m = allMatches.find((x) => x.id === rules.match_id);
+                            if (m) {
+                              const a = players.find((p) => p.id === m.player1_id)?.name;
+                              const c = players.find((p) => p.id === m.player2_id)?.name;
+                              labels.push(`${a} vs ${c}`);
+                            }
+                          }
+                          if (round) {
+                            labels.push(`Day ${round.day} · ${round.course_name}`);
+                          } else if (!rules.match_id) {
+                            labels.push("Event-wide");
+                          }
+                          if (b.type === "skins" && rules.score_type) {
+                            labels.push(rules.score_type);
+                          }
+                          return labels.join(" · ");
+                        })()}
                       </div>
                       <div className="mt-2">
                         <SideBetParticipantManager
@@ -536,7 +571,29 @@ export default async function EventAdminPage({
           )}
           {players.length > 0 && (
             <div className="mt-5">
-              <SideBetCreateForm slug={slug} rounds={rounds} />
+              <SideBetCreateForm
+                slug={slug}
+                rounds={rounds}
+                matches={allMatches
+                  .map((m) => {
+                    const round = rounds.find((r) => r.id === m.round_id);
+                    return {
+                      id: m.id,
+                      match_number: m.match_number,
+                      round_day: round?.day ?? 0,
+                      player1_name:
+                        players.find((p) => p.id === m.player1_id)?.name ?? "?",
+                      player2_name:
+                        players.find((p) => p.id === m.player2_id)?.name ?? "?",
+                    };
+                  })
+                  .filter((m) => m.round_day > 0)
+                  .sort(
+                    (a, b) =>
+                      a.round_day - b.round_day ||
+                      a.match_number - b.match_number,
+                  )}
+              />
             </div>
           )}
         </Section>

@@ -58,19 +58,33 @@ function centsToDollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+export type CreateFormMatch = {
+  id: string;
+  match_number: number;
+  round_day: number;
+  player1_name: string;
+  player2_name: string;
+};
+
 export function SideBetCreateForm({
   slug,
   rounds,
+  matches,
 }: {
   slug: string;
   rounds: RoundRow[];
+  matches: CreateFormMatch[];
 }) {
   const router = useRouter();
-  const [type, setType] = useState<"custom" | "skins">("custom");
+  const [type, setType] = useState<
+    "custom" | "skins" | "presses" | "ctp" | "long_drive"
+  >("custom");
   const [name, setName] = useState("");
   const [buyIn, setBuyIn] = useState("");
   const [roundId, setRoundId] = useState("");
   const [scoreType, setScoreType] = useState<"gross" | "net">("gross");
+  const [matchId, setMatchId] = useState("");
+  const [holeNumber, setHoleNumber] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,16 +96,28 @@ export function SideBetCreateForm({
       setError("Skins bets need a round.");
       return;
     }
+    if (type === "presses" && !matchId) {
+      setError("Press bets need a match.");
+      return;
+    }
     setBusy(true);
     try {
       const body: Record<string, unknown> = {
         type,
         name,
         buy_in_cents: dollarsToCents(buyIn || "0"),
-        round_id: roundId || undefined,
       };
       if (type === "skins") {
+        body.round_id = roundId;
         body.rules = { score_type: scoreType };
+      } else if (type === "presses") {
+        body.rules = { match_id: matchId };
+      } else if (type === "ctp" || type === "long_drive") {
+        if (holeNumber) {
+          body.rules = { hole_number: Number(holeNumber) };
+        }
+      } else if (roundId) {
+        body.round_id = roundId;
       }
       const res = await fetch(`/api/events/${slug}/side-bets`, {
         method: "POST",
@@ -107,6 +133,8 @@ export function SideBetCreateForm({
       setName("");
       setBuyIn("");
       setRoundId("");
+      setMatchId("");
+      setHoleNumber("");
       setType("custom");
       setScoreType("gross");
       router.refresh();
@@ -117,17 +145,37 @@ export function SideBetCreateForm({
     }
   }
 
+  const placeholder = (() => {
+    switch (type) {
+      case "skins":
+        return "Skins · Day II";
+      case "presses":
+        return "Press · Reid v Keller";
+      case "ctp":
+        return "Closest to pin · 17";
+      case "long_drive":
+        return "Long drive · 13";
+      default:
+        return "Bet name";
+    }
+  })();
+
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3">
       <Field label="Type">
         <select
           value={type}
-          onChange={(e) => setType(e.target.value as "custom" | "skins")}
+          onChange={(e) => setType(e.target.value as typeof type)}
           className="font-body-serif px-3 py-2 w-[140px]"
           style={fieldStyle}
         >
           <option value="custom">Custom</option>
           <option value="skins">Skins</option>
+          <option value="presses" disabled={matches.length === 0}>
+            Press
+          </option>
+          <option value="ctp">Closest to pin</option>
+          <option value="long_drive">Long drive</option>
         </select>
       </Field>
       <Field label="Bet name">
@@ -137,7 +185,7 @@ export function SideBetCreateForm({
           maxLength={80}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={type === "skins" ? "Skins · Day II" : "Closest to pin · 17"}
+          placeholder={placeholder}
           className="font-body-serif px-3 py-2 w-[220px]"
           style={fieldStyle}
         />
@@ -153,25 +201,51 @@ export function SideBetCreateForm({
           style={fieldStyle}
         />
       </Field>
-      <Field
-        label={type === "skins" ? "Round" : "Round (optional)"}
-        hint={type === "skins" ? "Required for skins" : undefined}
-      >
-        <select
-          required={type === "skins"}
-          value={roundId}
-          onChange={(e) => setRoundId(e.target.value)}
-          className="font-body-serif px-3 py-2 w-[200px]"
-          style={fieldStyle}
+
+      {(type === "skins" || type === "custom" || type === "ctp" ||
+        type === "long_drive") && (
+        <Field
+          label={type === "skins" ? "Round" : "Round (optional)"}
+          hint={type === "skins" ? "Required for skins" : undefined}
         >
-          <option value="">{type === "skins" ? "— Pick a round —" : "Event-wide"}</option>
-          {rounds.map((r) => (
-            <option key={r.id} value={r.id}>
-              Day {r.day} · {r.course_name}
+          <select
+            required={type === "skins"}
+            value={roundId}
+            onChange={(e) => setRoundId(e.target.value)}
+            className="font-body-serif px-3 py-2 w-[200px]"
+            style={fieldStyle}
+          >
+            <option value="">
+              {type === "skins" ? "— Pick a round —" : "Event-wide"}
             </option>
-          ))}
-        </select>
-      </Field>
+            {rounds.map((r) => (
+              <option key={r.id} value={r.id}>
+                Day {r.day} · {r.course_name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
+      {type === "presses" && (
+        <Field label="Match" hint="Press auto-adds both players">
+          <select
+            required
+            value={matchId}
+            onChange={(e) => setMatchId(e.target.value)}
+            className="font-body-serif px-3 py-2 w-[260px]"
+            style={fieldStyle}
+          >
+            <option value="">— Pick a match —</option>
+            {matches.map((m) => (
+              <option key={m.id} value={m.id}>
+                Day {m.round_day} · #{m.match_number} · {m.player1_name} vs {m.player2_name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       {type === "skins" && (
         <Field label="Scoring">
           <select
@@ -185,6 +259,22 @@ export function SideBetCreateForm({
           </select>
         </Field>
       )}
+
+      {(type === "ctp" || type === "long_drive") && (
+        <Field label="Hole (optional)">
+          <input
+            type="number"
+            min={1}
+            max={18}
+            value={holeNumber}
+            onChange={(e) => setHoleNumber(e.target.value)}
+            placeholder="17"
+            className="font-mono px-3 py-2 w-[80px]"
+            style={fieldStyle}
+          />
+        </Field>
+      )}
+
       <button
         type="submit"
         disabled={busy || !name}
@@ -454,11 +544,20 @@ export function SideBetSettleButton({
           note: p.note,
         })),
       );
-      const carry = body.carryover_remaining as number;
-      const unalloc = body.unallocated_cents as number;
       const notes: string[] = [];
-      if (carry > 0) notes.push(`${carry} skin${carry === 1 ? "" : "s"} carried over (no winner)`);
-      if (unalloc > 0) notes.push(`$${(unalloc / 100).toFixed(2)} unallocated from rounding`);
+      if (typeof body.carryover_remaining === "number" && body.carryover_remaining > 0) {
+        notes.push(
+          `${body.carryover_remaining} skin${body.carryover_remaining === 1 ? "" : "s"} carried over (no winner)`,
+        );
+      }
+      if (typeof body.match_status === "string" && body.match_status !== "final" && body.match_status !== "halved") {
+        notes.push(`Match is ${body.match_status} — no payouts suggested yet`);
+      }
+      if (typeof body.unallocated_cents === "number" && body.unallocated_cents > 0) {
+        notes.push(
+          `$${(body.unallocated_cents / 100).toFixed(2)} unallocated`,
+        );
+      }
       setComputeMsg(notes.length > 0 ? `Pre-filled. ${notes.join(" · ")}.` : "Pre-filled.");
       setComputeBusy(false);
     } catch {
@@ -557,7 +656,7 @@ export function SideBetSettleButton({
           Pot ${centsToDollars(pot)} · payouts ${centsToDollars(totalCents)}
         </span>
       </div>
-      {bet.type === "skins" && (
+      {(bet.type === "skins" || bet.type === "presses") && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -573,7 +672,11 @@ export function SideBetSettleButton({
               opacity: computeBusy ? 0.5 : 1,
             }}
           >
-            {computeBusy ? "Computing…" : "Pre-fill from scores"}
+            {computeBusy
+              ? "Computing…"
+              : bet.type === "presses"
+                ? "Pre-fill from match"
+                : "Pre-fill from scores"}
           </button>
           {computeMsg && (
             <span

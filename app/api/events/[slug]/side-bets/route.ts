@@ -15,6 +15,8 @@ export const runtime = "nodejs";
 // settle them manually like a custom bet.
 const RulesSchema = z.object({
   score_type: z.enum(["gross", "net"]).optional(),
+  match_id: z.string().min(1).optional(),
+  hole_number: z.number().int().min(1).max(18).optional(),
 });
 
 const Body = z.object({
@@ -90,14 +92,56 @@ export async function POST(
     );
   }
 
-  const rulesJson =
-    parsed.data.type === "skins"
-      ? JSON.stringify({
-          score_type: parsed.data.rules?.score_type ?? "gross",
-        })
-      : parsed.data.rules
-        ? JSON.stringify(parsed.data.rules)
-        : null;
+  // Presses are tied to a singles match; validate it exists and grab the
+  // two players so we can auto-add them as participants below.
+  let pressMatch: { id: string; round_id: string; player1_id: string; player2_id: string } | null = null;
+  if (parsed.data.type === "presses") {
+    const matchId = parsed.data.rules?.match_id;
+    if (!matchId) {
+      return NextResponse.json(
+        { error: "Press bets need a match." },
+        { status: 400 },
+      );
+    }
+    const m = db
+      .prepare(
+        `SELECT m.id, m.round_id, m.player1_id, m.player2_id
+           FROM matches m
+           JOIN rounds r ON r.id = m.round_id
+           WHERE m.id = ? AND r.event_id = ?`,
+      )
+      .get(matchId, slug) as
+      | { id: string; round_id: string; player1_id: string; player2_id: string }
+      | undefined;
+    if (!m) {
+      return NextResponse.json(
+        { error: "Press match doesn't belong to this event." },
+        { status: 400 },
+      );
+    }
+    pressMatch = m;
+  }
+
+  // Compose rules_json depending on type.
+  let rulesJson: string | null = null;
+  if (parsed.data.type === "skins") {
+    rulesJson = JSON.stringify({
+      score_type: parsed.data.rules?.score_type ?? "gross",
+    });
+  } else if (parsed.data.type === "presses" && pressMatch) {
+    rulesJson = JSON.stringify({
+      match_id: pressMatch.id,
+      score_type: "net",
+    });
+  } else if (parsed.data.type === "ctp" || parsed.data.type === "long_drive") {
+    if (parsed.data.rules?.hole_number !== undefined) {
+      rulesJson = JSON.stringify({
+        hole_number: parsed.data.rules.hole_number,
+      });
+    }
+  } else if (parsed.data.rules) {
+    rulesJson = JSON.stringify(parsed.data.rules);
+  }
 
   const result = runWithEvent(slug, () => {
     const bet = createSideBet(slug, {
@@ -105,9 +149,18 @@ export async function POST(
       name: parsed.data.name,
       description: parsed.data.description ?? null,
       buy_in_cents: parsed.data.buy_in_cents,
-      round_id: parsed.data.round_id ?? null,
+      round_id:
+        parsed.data.round_id ?? (pressMatch ? pressMatch.round_id : null),
       rules_json: rulesJson,
     });
+    // Press: auto-add the two players in the match if no explicit list given.
+    if (
+      pressMatch &&
+      !(parsed.data.player_ids && parsed.data.player_ids.length > 0)
+    ) {
+      addPlayerEntry(bet.id, pressMatch.player1_id);
+      addPlayerEntry(bet.id, pressMatch.player2_id);
+    }
     for (const pid of parsed.data.player_ids ?? []) addPlayerEntry(bet.id, pid);
     for (const tid of parsed.data.team_ids ?? []) addTeamEntry(bet.id, tid);
     return bet;
