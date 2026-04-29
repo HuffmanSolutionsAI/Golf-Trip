@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CourseRow, TeamRow } from "@/lib/types";
+import type { CourseRow, PlayerRow, TeamRow } from "@/lib/types";
 import { listFormats } from "@/lib/formats/registry";
 
 const fieldStyle: React.CSSProperties = {
@@ -719,3 +719,627 @@ export function RevokeRoleButton({
     </span>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Inline edit / delete (Plan A · Phase 3h)
+// ---------------------------------------------------------------------------
+
+export function TeamRow({
+  slug,
+  team,
+  sortOrder,
+}: {
+  slug: string;
+  team: TeamRow;
+  sortOrder: number;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(team.name);
+  const [color, setColor] = useState(team.display_color);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/teams/${team.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, display_color: color }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not save.");
+        setBusy(false);
+        return;
+      }
+      setEditing(false);
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <form
+        onSubmit={save}
+        className="grid items-center gap-2 py-2.5"
+        style={{
+          gridTemplateColumns: "20px minmax(0,1fr) auto auto",
+          borderBottom: "1px solid var(--color-rule-cream)",
+        }}
+      >
+        <span
+          className="inline-block rounded-full"
+          style={{ width: 12, height: 12, background: color }}
+        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="text"
+            required
+            maxLength={60}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="font-body-serif px-2 py-1 flex-1 min-w-[120px]"
+            style={fieldStyle}
+          />
+          <div className="flex items-center gap-1.5">
+            {COLOR_PRESETS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                aria-label={`Color ${c}`}
+                className="rounded-full"
+                style={{
+                  width: 18,
+                  height: 18,
+                  background: c,
+                  border:
+                    color === c
+                      ? "2px solid var(--color-navy)"
+                      : "1px solid var(--color-rule-cream)",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="font-ui uppercase px-2 py-1"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: "var(--color-cream)",
+            background: "var(--color-navy)",
+            fontWeight: 600,
+            opacity: busy ? 0.5 : 1,
+          }}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(false);
+            setName(team.name);
+            setColor(team.display_color);
+            setError(null);
+          }}
+          className="font-ui uppercase px-2 py-1"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: "var(--color-stone)",
+            border: "1px solid var(--color-rule-cream)",
+            background: "transparent",
+          }}
+        >
+          Cancel
+        </button>
+        {error && (
+          <div
+            className="font-body-serif italic"
+            style={{
+              fontSize: 11,
+              color: "var(--color-oxblood)",
+              gridColumn: "1 / -1",
+            }}
+          >
+            {error}
+          </div>
+        )}
+      </form>
+    );
+  }
+
+  return (
+    <div
+      className="grid items-center py-2.5"
+      style={{
+        gridTemplateColumns: "20px minmax(0,1fr) 60px auto",
+        borderBottom: "1px solid var(--color-rule-cream)",
+      }}
+    >
+      <span
+        className="inline-block rounded-full"
+        style={{ width: 12, height: 12, background: team.display_color }}
+      />
+      <span
+        className="font-display text-[var(--color-navy)] truncate"
+        style={{ fontSize: 18 }}
+      >
+        {team.name}
+      </span>
+      <span
+        className="font-mono text-right"
+        style={{ fontSize: 11, color: "var(--color-stone)" }}
+      >
+        #{sortOrder}
+      </span>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="font-ui uppercase px-2 py-1"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          border: "1px solid var(--color-rule-cream)",
+          background: "transparent",
+        }}
+      >
+        Edit
+      </button>
+    </div>
+  );
+}
+
+export function PlayerRow({
+  slug,
+  player,
+  teams,
+}: {
+  slug: string;
+  player: PlayerRow;
+  teams: TeamRow[];
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(player.name);
+  const [handicap, setHandicap] = useState(String(player.handicap));
+  const [email, setEmail] = useState(player.email ?? "");
+  const [teamId, setTeamId] = useState(player.team_id);
+  const [slot, setSlot] = useState(player.team_slot);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError(null);
+    const hcp = Number(handicap);
+    if (!Number.isFinite(hcp)) {
+      setError("Handicap must be a number.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/players/${player.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          handicap: hcp,
+          email,
+          team_id: teamId,
+          team_slot: slot,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not save.");
+        setBusy(false);
+        return;
+      }
+      setEditing(false);
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <form
+        onSubmit={save}
+        className="flex flex-wrap items-end gap-2 py-2"
+        style={{ borderBottom: "1px solid var(--color-rule-cream)" }}
+      >
+        <Field label="Name">
+          <input
+            type="text"
+            required
+            maxLength={80}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="font-body-serif px-2 py-1 w-[160px]"
+            style={fieldStyle}
+          />
+        </Field>
+        <Field label="HCP">
+          <input
+            type="number"
+            step="0.1"
+            required
+            value={handicap}
+            onChange={(e) => setHandicap(e.target.value)}
+            className="font-mono px-2 py-1 w-[80px]"
+            style={fieldStyle}
+          />
+        </Field>
+        <Field label="Email">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="—"
+            className="font-body-serif px-2 py-1 w-[200px]"
+            style={fieldStyle}
+          />
+        </Field>
+        <Field label="Team">
+          <select
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            className="font-body-serif px-2 py-1 w-[160px]"
+            style={fieldStyle}
+          >
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Slot">
+          <select
+            value={slot}
+            onChange={(e) => setSlot(e.target.value as "A" | "B" | "C" | "D")}
+            className="font-mono px-2 py-1 w-[60px]"
+            style={fieldStyle}
+          >
+            {(["A", "B", "C", "D"] as const).map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <button
+          type="submit"
+          disabled={busy}
+          className="font-ui uppercase px-3 py-1.5"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: "var(--color-cream)",
+            background: "var(--color-navy)",
+            fontWeight: 600,
+            opacity: busy ? 0.5 : 1,
+          }}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(false);
+            setName(player.name);
+            setHandicap(String(player.handicap));
+            setEmail(player.email ?? "");
+            setTeamId(player.team_id);
+            setSlot(player.team_slot);
+            setError(null);
+          }}
+          className="font-ui uppercase px-3 py-1.5"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.22em",
+            color: "var(--color-stone)",
+            border: "1px solid var(--color-rule-cream)",
+            background: "transparent",
+          }}
+        >
+          Cancel
+        </button>
+        {error && (
+          <div
+            className="font-body-serif italic w-full"
+            style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+          >
+            {error}
+          </div>
+        )}
+      </form>
+    );
+  }
+
+  return (
+    <div
+      className="grid items-center py-2"
+      style={{
+        gridTemplateColumns: "30px minmax(0,1fr) 64px auto",
+        borderBottom: "1px solid var(--color-rule-cream)",
+      }}
+    >
+      <span
+        className="font-ui uppercase"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.22em",
+          color: "var(--color-gold)",
+          fontWeight: 600,
+        }}
+      >
+        {player.team_slot}
+      </span>
+      <span
+        className="font-display text-[var(--color-navy)] truncate"
+        style={{ fontSize: 17 }}
+      >
+        {player.name}
+        {player.email && (
+          <span
+            className="font-body-serif italic ml-2"
+            style={{ fontSize: 12, color: "var(--color-stone)" }}
+          >
+            {player.email}
+          </span>
+        )}
+      </span>
+      <span
+        className="font-mono text-right"
+        style={{ fontSize: 11, color: "var(--color-stone)" }}
+      >
+        HCP {player.handicap}
+      </span>
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="font-ui uppercase px-2 py-1"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          border: "1px solid var(--color-rule-cream)",
+          background: "transparent",
+        }}
+      >
+        Edit
+      </button>
+    </div>
+  );
+}
+
+export function MatchDeleteButton({
+  slug,
+  roundId,
+  matchId,
+}: {
+  slug: string;
+  roundId: string;
+  matchId: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    if (!confirm("Delete this match?")) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/events/${slug}/rounds/${roundId}/matches/${matchId}`,
+        { method: "DELETE" },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not delete.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        title="Delete match"
+        className="font-ui uppercase px-2 py-1"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          border: "1px solid var(--color-rule-cream)",
+          background: "transparent",
+          opacity: busy ? 0.5 : 1,
+        }}
+      >
+        ✕
+      </button>
+      {error && (
+        <span
+          className="font-body-serif italic mt-1 text-right"
+          style={{
+            fontSize: 11,
+            color: "var(--color-oxblood)",
+            maxWidth: 240,
+          }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function TeeGroupDeleteButton({
+  slug,
+  groupId,
+}: {
+  slug: string;
+  groupId: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onClick() {
+    if (busy) return;
+    if (
+      !confirm(
+        "Delete this tee group? Members go back to ungrouped (matches/entries are kept).",
+      )
+    )
+      return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/tee-groups/${groupId}`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not delete.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col items-end">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        title="Delete group"
+        className="font-ui uppercase px-2 py-1"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.22em",
+          color: "var(--color-stone)",
+          border: "1px solid var(--color-rule-cream)",
+          background: "transparent",
+          opacity: busy ? 0.5 : 1,
+        }}
+      >
+        ✕
+      </button>
+      {error && (
+        <span
+          className="font-body-serif italic mt-1 text-right"
+          style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+
+export function TeeGroupTimeInput({
+  slug,
+  groupId,
+  current,
+}: {
+  slug: string;
+  groupId: string;
+  current: string | null;
+}) {
+  const router = useRouter();
+  const [time, setTime] = useState(current ? current.slice(0, 5) : "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    if (busy) return;
+    if (time === (current?.slice(0, 5) ?? "")) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/events/${slug}/tee-groups/${groupId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduled_time: time || null }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not save.");
+        setBusy(false);
+        return;
+      }
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-col">
+      <input
+        type="time"
+        value={time}
+        onChange={(e) => setTime(e.target.value)}
+        onBlur={save}
+        disabled={busy}
+        className="font-mono px-2 py-1"
+        style={{
+          fontSize: 13,
+          background: "var(--color-cream)",
+          border: "1px solid var(--color-rule-cream)",
+          color: "var(--color-navy)",
+          opacity: busy ? 0.5 : 1,
+          width: 120,
+        }}
+      />
+      {error && (
+        <span
+          className="font-body-serif italic mt-1"
+          style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </span>
+      )}
+    </span>
+  );
+}
+

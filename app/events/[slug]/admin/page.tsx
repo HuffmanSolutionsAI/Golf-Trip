@@ -16,6 +16,8 @@ import {
   AutoFillButton,
   RoleInviteForm,
   RevokeRoleButton,
+  TeamRow,
+  PlayerRow,
 } from "./AdminForms";
 
 type RoleListing = {
@@ -210,39 +212,16 @@ export default async function EventAdminPage({
           empty="No teams yet. Add the first one below."
         >
           {teams.length > 0 && (
-            <ul className="mt-2">
+            <div className="mt-2">
               {teams.map((t) => (
-                <li
+                <TeamRow
                   key={t.id}
-                  className="grid items-center py-2.5"
-                  style={{
-                    gridTemplateColumns: "20px minmax(0,1fr) 60px",
-                    borderBottom: "1px solid var(--color-rule-cream)",
-                  }}
-                >
-                  <span
-                    className="inline-block rounded-full"
-                    style={{
-                      width: 12,
-                      height: 12,
-                      background: t.display_color,
-                    }}
-                  />
-                  <span
-                    className="font-display text-[var(--color-navy)] truncate"
-                    style={{ fontSize: 18 }}
-                  >
-                    {t.name}
-                  </span>
-                  <span
-                    className="font-mono text-right"
-                    style={{ fontSize: 11, color: "var(--color-stone)" }}
-                  >
-                    #{t.sort_order}
-                  </span>
-                </li>
+                  slug={slug}
+                  team={t}
+                  sortOrder={t.sort_order}
+                />
               ))}
-            </ul>
+            </div>
           )}
           <div className="mt-4">
             <TeamForm slug={slug} />
@@ -287,49 +266,12 @@ export default async function EventAdminPage({
                       </span>
                     </div>
                     {ps.map((p) => (
-                      <div
+                      <PlayerRow
                         key={p.id}
-                        className="grid items-center py-2"
-                        style={{
-                          gridTemplateColumns: "30px minmax(0,1fr) 64px",
-                          borderBottom: "1px solid var(--color-rule-cream)",
-                        }}
-                      >
-                        <span
-                          className="font-ui uppercase"
-                          style={{
-                            fontSize: 10,
-                            letterSpacing: "0.22em",
-                            color: "var(--color-gold)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {p.team_slot}
-                        </span>
-                        <span
-                          className="font-display text-[var(--color-navy)] truncate"
-                          style={{ fontSize: 17 }}
-                        >
-                          {p.name}
-                          {p.email && (
-                            <span
-                              className="font-body-serif italic ml-2"
-                              style={{
-                                fontSize: 12,
-                                color: "var(--color-stone)",
-                              }}
-                            >
-                              {p.email}
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className="font-mono text-right"
-                          style={{ fontSize: 11, color: "var(--color-stone)" }}
-                        >
-                          HCP {p.handicap}
-                        </span>
-                      </div>
+                        slug={slug}
+                        player={p}
+                        teams={teams}
+                      />
                     ))}
                   </div>
                 );

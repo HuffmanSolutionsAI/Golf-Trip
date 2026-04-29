@@ -75,3 +75,35 @@ export async function POST(
   emitChange("matches", slug);
   return NextResponse.json({ ok: true });
 }
+
+// Delete a tee group. The schema's ON DELETE CASCADE on
+// tee_group_matches.tee_group_id and tee_group_entries.tee_group_id
+// handles the membership rows; underlying matches/scramble_entries are
+// untouched, so the commissioner gets the round's pieces back as
+// "ungrouped" and can re-bind them to a different group. (Plan A · 3h)
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ slug: string; groupId: string }> },
+) {
+  const { slug, groupId } = await params;
+  const guard = await checkCommissioner(slug);
+  if (!guard.ok) {
+    return NextResponse.json({ error: guard.error }, { status: guard.status });
+  }
+
+  const db = getDb();
+  const ownership = db
+    .prepare(
+      `SELECT g.id FROM tee_groups g
+         JOIN rounds r ON r.id = g.round_id
+         WHERE g.id = ? AND r.event_id = ?`,
+    )
+    .get(groupId, slug) as { id: string } | undefined;
+  if (!ownership) {
+    return NextResponse.json({ error: "Unknown tee group." }, { status: 404 });
+  }
+
+  db.prepare("DELETE FROM tee_groups WHERE id = ?").run(groupId);
+  emitChange("matches", slug);
+  return NextResponse.json({ ok: true });
+}

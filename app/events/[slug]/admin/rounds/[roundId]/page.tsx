@@ -10,6 +10,11 @@ import { FORMATS, formatIdForRound } from "@/lib/formats/registry";
 import { roundHandicap } from "@/lib/scoring/handicaps";
 import { formatTeeTime, toRoman } from "@/lib/utils";
 import { MatchForm, TeeGroupForm, ScorerSelect } from "./RoundAdminForms";
+import {
+  MatchDeleteButton,
+  TeeGroupDeleteButton,
+  TeeGroupTimeInput,
+} from "../../AdminForms";
 
 export const dynamic = "force-dynamic";
 
@@ -168,6 +173,11 @@ export default async function RoundAdminPage({
                             : ""}
                         </div>
                       </div>
+                      <MatchDeleteButton
+                        slug={slug}
+                        roundId={roundId}
+                        matchId={m.id}
+                      />
                     </li>
                   );
                 })}
@@ -276,7 +286,7 @@ export default async function RoundAdminPage({
                     key={g.id}
                     className="grid items-start gap-3 py-3"
                     style={{
-                      gridTemplateColumns: "40px minmax(0,1fr) 220px",
+                      gridTemplateColumns: "40px minmax(0,1fr) 220px auto",
                       borderBottom: "1px solid var(--color-rule-cream)",
                     }}
                   >
@@ -287,16 +297,13 @@ export default async function RoundAdminPage({
                       {toRoman(g.group_number)}
                     </span>
                     <div className="min-w-0">
+                      <TeeGroupTimeInput
+                        slug={slug}
+                        groupId={g.id}
+                        current={g.scheduled_time}
+                      />
                       <div
-                        className="font-display text-[var(--color-navy)]"
-                        style={{ fontSize: 17, lineHeight: 1.15 }}
-                      >
-                        {g.scheduled_time
-                          ? formatTeeTime(g.scheduled_time)
-                          : "Time TBD"}
-                      </div>
-                      <div
-                        className="font-body-serif italic mt-0.5"
+                        className="font-body-serif italic mt-1"
                         style={{
                           fontSize: 12,
                           color: "var(--color-stone)",
@@ -313,6 +320,7 @@ export default async function RoundAdminPage({
                       players={players}
                       currentScorerId={g.scorer_player_id ?? null}
                     />
+                    <TeeGroupDeleteButton slug={slug} groupId={g.id} />
                   </li>
                 );
               })}
