@@ -97,7 +97,11 @@ export default async function DashboardPage() {
               {events.map(({ event, role }) => (
                 <li key={event.id}>
                   <Link
-                    href={`/events/${event.id}`}
+                    href={
+                      role === "commissioner"
+                        ? `/events/${event.id}/admin`
+                        : `/events/${event.id}`
+                    }
                     className="grid items-center gap-3 py-4"
                     style={{
                       gridTemplateColumns: "minmax(0,1fr) auto",

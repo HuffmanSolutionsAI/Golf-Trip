@@ -52,7 +52,7 @@ export function NewEventForm() {
         setSubmitting(false);
         return;
       }
-      router.push(`/events/${body.slug}`);
+      router.push(`/events/${body.slug}/admin`);
     } catch {
       setError("Network error. Try again.");
       setSubmitting(false);
