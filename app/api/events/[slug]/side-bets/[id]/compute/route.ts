@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { checkCommissioner } from "@/lib/auth/eventPermissions";
 import { runWithEvent } from "@/lib/repo/events";
-import { getSideBet, listEntries } from "@/lib/repo/sideBets";
+import { getSideBet, listEntries, listLots } from "@/lib/repo/sideBets";
 import { listHoles } from "@/lib/repo/rounds";
 import { getPlayer } from "@/lib/repo/players";
-import { getDay1MatchState } from "@/lib/repo/standings";
+import {
+  computeLeaderboard,
+  getDay1MatchState,
+} from "@/lib/repo/standings";
 import { getDb } from "@/lib/db";
 import { computeSkins, suggestSkinsPayouts } from "@/lib/scoring/skins";
 import { computePress } from "@/lib/scoring/presses";
+import { computeCalcutta } from "@/lib/scoring/calcutta";
 import type { HoleScoreRow, PlayerRow } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -33,11 +37,62 @@ export async function POST(
     if (bet.status === "settled") {
       return { error: "Bet is already settled.", status: 409 } as const;
     }
-    if (bet.type !== "skins" && bet.type !== "presses") {
+    if (
+      bet.type !== "skins" &&
+      bet.type !== "presses" &&
+      bet.type !== "calcutta"
+    ) {
       return {
         error: `Auto-compute isn't implemented for '${bet.type}' — settle manually.`,
         status: 400,
       } as const;
+    }
+
+    // ---- Calcutta: rank teams via leaderboard, allocate by schedule. ----
+    if (bet.type === "calcutta") {
+      const lots = listLots(bet.id);
+      if (lots.length === 0) {
+        return {
+          error: "Add at least one lot (team + bidder + bid) before computing.",
+          status: 400,
+        } as const;
+      }
+      let schedule: number[] = [50, 25, 15, 10];
+      if (bet.rules_json) {
+        try {
+          const r = JSON.parse(bet.rules_json) as {
+            payout_schedule?: number[];
+          };
+          if (Array.isArray(r.payout_schedule) && r.payout_schedule.length > 0) {
+            schedule = r.payout_schedule;
+          }
+        } catch {
+          /* default schedule */
+        }
+      }
+      const standings = computeLeaderboard().map((row) => ({
+        team_id: row.team_id,
+        rank: row.rank,
+      }));
+      const result = computeCalcutta({
+        lots: lots.map((l) => ({
+          team_id: l.team_id,
+          bidder_player_id: l.bidder_player_id,
+          bid_cents: l.bid_cents,
+        })),
+        standings,
+        schedule_pct: schedule,
+      });
+      return {
+        ok: true as const,
+        bet_id: bet.id,
+        bet_type: "calcutta" as const,
+        pot_cents: result.pot_cents,
+        schedule_pct: result.schedule_pct,
+        team_allocations: result.team_allocations,
+        unallocated_cents: result.unallocated_cents,
+        payouts: result.payouts,
+      };
     }
 
     // ---- Presses: read match state, allocate by winner. ----

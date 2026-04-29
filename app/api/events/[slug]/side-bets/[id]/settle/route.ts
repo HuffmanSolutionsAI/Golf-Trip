@@ -5,6 +5,7 @@ import { runWithEvent } from "@/lib/repo/events";
 import {
   getSideBet,
   listEntries,
+  listLots,
   settleSideBet,
 } from "@/lib/repo/sideBets";
 import { getDb } from "@/lib/db";
@@ -65,12 +66,24 @@ export async function POST(
     );
   }
 
-  const entries = runWithEvent(slug, () => listEntries(id));
-  if (entries.length === 0) {
-    return NextResponse.json(
-      { error: "No participants — add at least one before settling." },
-      { status: 400 },
-    );
+  // Calcutta uses lots, every other type uses entries. Either flavor must
+  // have something before we can settle.
+  if (bet.type === "calcutta") {
+    const lots = runWithEvent(slug, () => listLots(id));
+    if (lots.length === 0) {
+      return NextResponse.json(
+        { error: "No lots — add at least one before settling." },
+        { status: 400 },
+      );
+    }
+  } else {
+    const entries = runWithEvent(slug, () => listEntries(id));
+    if (entries.length === 0) {
+      return NextResponse.json(
+        { error: "No participants — add at least one before settling." },
+        { status: 400 },
+      );
+    }
   }
 
   const db = getDb();

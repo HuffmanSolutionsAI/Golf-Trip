@@ -4,6 +4,7 @@ import { listPlayers, listTeams } from "@/lib/repo/players";
 import { listRounds } from "@/lib/repo/rounds";
 import {
   listEntries,
+  listLots,
   listPayouts,
   listSideBets,
 } from "@/lib/repo/sideBets";
@@ -30,11 +31,15 @@ export default async function EventWageringPage({
     const rounds = listRounds();
     const entries: Record<string, ReturnType<typeof listEntries>> = {};
     const payouts: Record<string, ReturnType<typeof listPayouts>> = {};
+    const lots: Record<string, ReturnType<typeof listLots>> = {};
     for (const b of bets) {
       entries[b.id] = listEntries(b.id);
       payouts[b.id] = listPayouts(b.id);
+      if (b.type === "calcutta") {
+        lots[b.id] = listLots(b.id);
+      }
     }
-    return { bets, players, teams, rounds, entries, payouts };
+    return { bets, players, teams, rounds, entries, payouts, lots };
   });
 
   const playerById = new Map(data.players.map((p) => [p.id, p]));
@@ -103,6 +108,7 @@ export default async function EventWageringPage({
               title="Open"
               bets={open}
               entries={data.entries}
+              lots={data.lots}
               payouts={data.payouts}
               playerById={playerById}
               teamById={teamById}
@@ -115,6 +121,7 @@ export default async function EventWageringPage({
               title="Settled"
               bets={settled}
               entries={data.entries}
+              lots={data.lots}
               payouts={data.payouts}
               playerById={playerById}
               teamById={teamById}
@@ -130,11 +137,13 @@ export default async function EventWageringPage({
 type BetData = ReturnType<typeof listSideBets>;
 type EntriesByBet = Record<string, ReturnType<typeof listEntries>>;
 type PayoutsByBet = Record<string, ReturnType<typeof listPayouts>>;
+type LotsByBet = Record<string, ReturnType<typeof listLots>>;
 
 function BetGroup({
   title,
   bets,
   entries,
+  lots,
   payouts,
   playerById,
   teamById,
@@ -143,6 +152,7 @@ function BetGroup({
   title: string;
   bets: BetData;
   entries: EntriesByBet;
+  lots: LotsByBet;
   payouts: PayoutsByBet;
   playerById: Map<string, ReturnType<typeof listPlayers>[number]>;
   teamById: Map<string, ReturnType<typeof listTeams>[number]>;
@@ -166,7 +176,11 @@ function BetGroup({
         {bets.map((b) => {
           const ents = entries[b.id] ?? [];
           const pays = payouts[b.id] ?? [];
-          const pot = b.buy_in_cents * ents.length;
+          const betLots = lots[b.id] ?? [];
+          const pot =
+            b.type === "calcutta"
+              ? betLots.reduce((s, l) => s + l.bid_cents, 0)
+              : b.buy_in_cents * ents.length;
           const round = b.round_id ? roundById.get(b.round_id) : null;
           const totalPaid = pays.reduce((s, p) => s + p.amount_cents, 0);
           return (
@@ -201,9 +215,15 @@ function BetGroup({
                               ? "Closest to pin"
                               : b.type === "long_drive"
                                 ? "Long drive"
-                                : "Custom",
+                                : b.type === "calcutta"
+                                  ? "Calcutta"
+                                  : "Custom",
                       );
-                      let rules: { hole_number?: number; score_type?: string } = {};
+                      let rules: {
+                        hole_number?: number;
+                        score_type?: string;
+                        payout_schedule?: number[];
+                      } = {};
                       try {
                         if (b.rules_json) rules = JSON.parse(b.rules_json);
                       } catch {
@@ -218,11 +238,15 @@ function BetGroup({
                       if (b.type === "skins" && rules.score_type) {
                         labels.push(rules.score_type);
                       }
-                      labels.push(
-                        b.buy_in_cents > 0
-                          ? `${fmt$(b.buy_in_cents)} buy-in`
-                          : "no buy-in",
-                      );
+                      if (b.type === "calcutta" && rules.payout_schedule) {
+                        labels.push(rules.payout_schedule.join("/") + "%");
+                      } else {
+                        labels.push(
+                          b.buy_in_cents > 0
+                            ? `${fmt$(b.buy_in_cents)} buy-in`
+                            : "no buy-in",
+                        );
+                      }
                       return labels.join(" · ");
                     })()}
                   </div>
@@ -246,41 +270,91 @@ function BetGroup({
                   )}
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                {ents.map((e) => {
-                  const label = e.player_id
-                    ? playerById.get(e.player_id)?.name ?? "?"
-                    : e.team_id
-                      ? teamById.get(e.team_id)?.name ?? "?"
-                      : "?";
-                  return (
+              {b.type === "calcutta" ? (
+                <div className="mt-3">
+                  {betLots.length > 0 ? (
+                    <ul className="space-y-1">
+                      {betLots.map((l) => {
+                        const team = teamById.get(l.team_id);
+                        const bidder = playerById.get(l.bidder_player_id);
+                        return (
+                          <li
+                            key={l.id}
+                            className="flex items-baseline justify-between font-body-serif"
+                            style={{
+                              fontSize: 13,
+                              color: "var(--color-navy)",
+                            }}
+                          >
+                            <span>
+                              {team?.name ?? "?"}
+                              <span
+                                className="font-body-serif italic ml-2"
+                                style={{
+                                  fontSize: 12,
+                                  color: "var(--color-stone)",
+                                }}
+                              >
+                                owned by {bidder?.name ?? "?"}
+                              </span>
+                            </span>
+                            <span className="font-mono">
+                              {fmt$(l.bid_cents)}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
                     <span
-                      key={e.id}
-                      className="font-body-serif"
+                      className="font-body-serif italic"
                       style={{
                         fontSize: 12,
                         color: "var(--color-stone)",
-                        padding: "1px 8px",
-                        border: "1px solid var(--color-rule-cream)",
+                        opacity: 0.6,
                       }}
                     >
-                      {label}
+                      No lots yet
                     </span>
-                  );
-                })}
-                {ents.length === 0 && (
-                  <span
-                    className="font-body-serif italic"
-                    style={{
-                      fontSize: 12,
-                      color: "var(--color-stone)",
-                      opacity: 0.6,
-                    }}
-                  >
-                    No participants yet
-                  </span>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  {ents.map((e) => {
+                    const label = e.player_id
+                      ? playerById.get(e.player_id)?.name ?? "?"
+                      : e.team_id
+                        ? teamById.get(e.team_id)?.name ?? "?"
+                        : "?";
+                    return (
+                      <span
+                        key={e.id}
+                        className="font-body-serif"
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-stone)",
+                          padding: "1px 8px",
+                          border: "1px solid var(--color-rule-cream)",
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })}
+                  {ents.length === 0 && (
+                    <span
+                      className="font-body-serif italic"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--color-stone)",
+                        opacity: 0.6,
+                      }}
+                    >
+                      No participants yet
+                    </span>
+                  )}
+                </div>
+              )}
               {b.status === "settled" && pays.length > 0 && (
                 <ul className="mt-3 space-y-1">
                   {pays.map((p) => {

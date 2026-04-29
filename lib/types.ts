@@ -134,6 +134,15 @@ export type SideBetPayoutRow = {
   created_at: string;
 };
 
+export type SideBetCalcuttaLotRow = {
+  id: string;
+  side_bet_id: string;
+  team_id: string;
+  bidder_player_id: string;
+  bid_cents: number;
+  created_at: string;
+};
+
 export type HoleRow = {
   id: string;
   round_id: string;

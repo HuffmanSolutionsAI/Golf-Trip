@@ -17,6 +17,10 @@ const RulesSchema = z.object({
   score_type: z.enum(["gross", "net"]).optional(),
   match_id: z.string().min(1).optional(),
   hole_number: z.number().int().min(1).max(18).optional(),
+  // Calcutta: percentages by finishing rank, e.g. [50, 25, 15, 10].
+  // Slot 0 = 1st place share. Sum is not required to equal 100 — some
+  // events keep a holdback for a separate side pot.
+  payout_schedule: z.array(z.number().min(0).max(100)).max(20).optional(),
 });
 
 const Body = z.object({
@@ -139,6 +143,10 @@ export async function POST(
         hole_number: parsed.data.rules.hole_number,
       });
     }
+  } else if (parsed.data.type === "calcutta") {
+    rulesJson = JSON.stringify({
+      payout_schedule: parsed.data.rules?.payout_schedule ?? [50, 25, 15, 10],
+    });
   } else if (parsed.data.rules) {
     rulesJson = JSON.stringify(parsed.data.rules);
   }

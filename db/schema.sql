@@ -387,3 +387,21 @@ CREATE TABLE IF NOT EXISTS side_bet_payouts (
 );
 
 CREATE INDEX IF NOT EXISTS side_bet_payouts_bet_idx ON side_bet_payouts (side_bet_id);
+
+-- Calcutta lots — each row is one team being "owned" by a bidder, paired
+-- with the bid amount. The pot for a calcutta is the sum of bid_cents
+-- across its lots (NOT buy_in_cents × entries — that's for the other
+-- types). Final payouts come from the event leaderboard via a payout
+-- schedule stored in side_bets.rules_json. (Plan A · Phase 4d)
+CREATE TABLE IF NOT EXISTS side_bet_calcutta_lots (
+  id               TEXT PRIMARY KEY,
+  side_bet_id      TEXT NOT NULL REFERENCES side_bets(id) ON DELETE CASCADE,
+  team_id          TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  bidder_player_id TEXT NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  bid_cents        INTEGER NOT NULL CHECK (bid_cents >= 0),
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (side_bet_id, team_id)
+);
+
+CREATE INDEX IF NOT EXISTS side_bet_calcutta_lots_bet_idx
+  ON side_bet_calcutta_lots (side_bet_id);

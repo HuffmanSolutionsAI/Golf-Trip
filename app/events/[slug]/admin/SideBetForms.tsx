@@ -77,7 +77,7 @@ export function SideBetCreateForm({
 }) {
   const router = useRouter();
   const [type, setType] = useState<
-    "custom" | "skins" | "presses" | "ctp" | "long_drive"
+    "custom" | "skins" | "presses" | "ctp" | "long_drive" | "calcutta"
   >("custom");
   const [name, setName] = useState("");
   const [buyIn, setBuyIn] = useState("");
@@ -85,6 +85,7 @@ export function SideBetCreateForm({
   const [scoreType, setScoreType] = useState<"gross" | "net">("gross");
   const [matchId, setMatchId] = useState("");
   const [holeNumber, setHoleNumber] = useState("");
+  const [scheduleStr, setScheduleStr] = useState("50,25,15,10");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,7 +106,8 @@ export function SideBetCreateForm({
       const body: Record<string, unknown> = {
         type,
         name,
-        buy_in_cents: dollarsToCents(buyIn || "0"),
+        // Calcutta has no per-participant buy-in — pot is the sum of bids.
+        buy_in_cents: type === "calcutta" ? 0 : dollarsToCents(buyIn || "0"),
       };
       if (type === "skins") {
         body.round_id = roundId;
@@ -116,6 +118,12 @@ export function SideBetCreateForm({
         if (holeNumber) {
           body.rules = { hole_number: Number(holeNumber) };
         }
+      } else if (type === "calcutta") {
+        const schedule = scheduleStr
+          .split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n) && n >= 0);
+        body.rules = { payout_schedule: schedule };
       } else if (roundId) {
         body.round_id = roundId;
       }
@@ -155,6 +163,8 @@ export function SideBetCreateForm({
         return "Closest to pin · 17";
       case "long_drive":
         return "Long drive · 13";
+      case "calcutta":
+        return "Calcutta · Year V";
       default:
         return "Bet name";
     }
@@ -176,6 +186,7 @@ export function SideBetCreateForm({
           </option>
           <option value="ctp">Closest to pin</option>
           <option value="long_drive">Long drive</option>
+          <option value="calcutta">Calcutta</option>
         </select>
       </Field>
       <Field label="Bet name">
@@ -190,17 +201,35 @@ export function SideBetCreateForm({
           style={fieldStyle}
         />
       </Field>
-      <Field label="Buy-in ($)">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={buyIn}
-          onChange={(e) => setBuyIn(e.target.value)}
-          placeholder="20"
-          className="font-mono px-3 py-2 w-[100px]"
-          style={fieldStyle}
-        />
-      </Field>
+      {type !== "calcutta" && (
+        <Field label="Buy-in ($)">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={buyIn}
+            onChange={(e) => setBuyIn(e.target.value)}
+            placeholder="20"
+            className="font-mono px-3 py-2 w-[100px]"
+            style={fieldStyle}
+          />
+        </Field>
+      )}
+
+      {type === "calcutta" && (
+        <Field
+          label="Payout schedule (%)"
+          hint="Comma-separated; 1st place first. Default 50,25,15,10."
+        >
+          <input
+            type="text"
+            value={scheduleStr}
+            onChange={(e) => setScheduleStr(e.target.value)}
+            placeholder="50,25,15,10"
+            className="font-mono px-3 py-2 w-[180px]"
+            style={fieldStyle}
+          />
+        </Field>
+      )}
 
       {(type === "skins" || type === "custom" || type === "ctp" ||
         type === "long_drive") && (
@@ -656,7 +685,9 @@ export function SideBetSettleButton({
           Pot ${centsToDollars(pot)} · payouts ${centsToDollars(totalCents)}
         </span>
       </div>
-      {(bet.type === "skins" || bet.type === "presses") && (
+      {(bet.type === "skins" ||
+        bet.type === "presses" ||
+        bet.type === "calcutta") && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -676,7 +707,9 @@ export function SideBetSettleButton({
               ? "Computing…"
               : bet.type === "presses"
                 ? "Pre-fill from match"
-                : "Pre-fill from scores"}
+                : bet.type === "calcutta"
+                  ? "Pre-fill from leaderboard"
+                  : "Pre-fill from scores"}
           </button>
           {computeMsg && (
             <span
@@ -868,6 +901,225 @@ export function SideBetDeleteButton({
         </span>
       )}
     </span>
+  );
+}
+
+export function CalcuttaLotsManager({
+  slug,
+  betId,
+  betStatus,
+  lots,
+  teams,
+  players,
+}: {
+  slug: string;
+  betId: string;
+  betStatus: "open" | "settled";
+  lots: Array<{
+    id: string;
+    team_id: string;
+    bidder_player_id: string;
+    bid_cents: number;
+  }>;
+  teams: TeamRow[];
+  players: PlayerRow[];
+}) {
+  const router = useRouter();
+  const [teamId, setTeamId] = useState("");
+  const [bidderId, setBidderId] = useState("");
+  const [bid, setBid] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const teamsTaken = new Set(lots.map((l) => l.team_id));
+  const teamsAvailable = teams.filter((t) => !teamsTaken.has(t.id));
+
+  async function addLot(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/events/${slug}/side-bets/${betId}/lots`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            team_id: teamId,
+            bidder_player_id: bidderId,
+            bid_cents: dollarsToCents(bid || "0"),
+          }),
+        },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not add lot.");
+        setBusy(false);
+        return;
+      }
+      setTeamId("");
+      setBidderId("");
+      setBid("");
+      router.refresh();
+      setBusy(false);
+    } catch {
+      setError("Network error.");
+      setBusy(false);
+    }
+  }
+
+  async function removeLot(tid: string) {
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/events/${slug}/side-bets/${betId}/lots`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ team_id: tid }),
+        },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(body.error ?? "Could not remove lot.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("Network error.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {lots.length > 0 && (
+        <ul>
+          {lots.map((l) => {
+            const team = teams.find((t) => t.id === l.team_id);
+            const bidder = players.find((p) => p.id === l.bidder_player_id);
+            return (
+              <li
+                key={l.id}
+                className="grid items-center gap-2 py-1.5"
+                style={{
+                  gridTemplateColumns: "minmax(0,1fr) auto auto auto",
+                  borderBottom: "1px dashed var(--color-rule-cream)",
+                }}
+              >
+                <span
+                  className="font-display text-[var(--color-navy)] truncate"
+                  style={{ fontSize: 14 }}
+                >
+                  {team?.name ?? l.team_id}
+                </span>
+                <span
+                  className="font-body-serif italic"
+                  style={{ fontSize: 12, color: "var(--color-stone)" }}
+                >
+                  {bidder?.name ?? l.bidder_player_id}
+                </span>
+                <span
+                  className="font-mono"
+                  style={{ fontSize: 13, color: "var(--color-navy)" }}
+                >
+                  ${centsToDollars(l.bid_cents)}
+                </span>
+                {betStatus === "open" ? (
+                  <button
+                    type="button"
+                    onClick={() => removeLot(l.team_id)}
+                    title="Remove"
+                    style={{
+                      fontSize: 11,
+                      color: "var(--color-oxblood)",
+                      background: "transparent",
+                      border: 0,
+                      cursor: "pointer",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ✕
+                  </button>
+                ) : (
+                  <span />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {betStatus === "open" && teamsAvailable.length > 0 && (
+        <form onSubmit={addLot} className="flex flex-wrap items-end gap-2 mt-1">
+          <Field label="Team">
+            <select
+              required
+              value={teamId}
+              onChange={(e) => setTeamId(e.target.value)}
+              className="font-body-serif px-2 py-1.5 w-[160px]"
+              style={fieldStyle}
+            >
+              <option value="">— Pick —</option>
+              {teamsAvailable.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Bidder">
+            <select
+              required
+              value={bidderId}
+              onChange={(e) => setBidderId(e.target.value)}
+              className="font-body-serif px-2 py-1.5 w-[180px]"
+              style={fieldStyle}
+            >
+              <option value="">— Pick —</option>
+              {players.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Bid ($)">
+            <input
+              type="text"
+              inputMode="decimal"
+              required
+              value={bid}
+              onChange={(e) => setBid(e.target.value)}
+              className="font-mono px-2 py-1.5 w-[100px]"
+              style={fieldStyle}
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={busy || !teamId || !bidderId || !bid}
+            className="font-ui uppercase px-3 py-1.5"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.22em",
+              color: "var(--color-cream)",
+              background: "var(--color-navy)",
+              fontWeight: 600,
+              opacity: busy || !teamId || !bidderId || !bid ? 0.5 : 1,
+            }}
+          >
+            Add lot
+          </button>
+        </form>
+      )}
+      {error && (
+        <span
+          className="font-body-serif italic"
+          style={{ fontSize: 11, color: "var(--color-oxblood)" }}
+        >
+          {error}
+        </span>
+      )}
+    </div>
   );
 }
 

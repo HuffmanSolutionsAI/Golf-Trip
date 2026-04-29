@@ -2,6 +2,7 @@ import "server-only";
 import { getDb, genId } from "@/lib/db";
 import { getCurrentEventId } from "@/lib/repo/events";
 import type {
+  SideBetCalcuttaLotRow,
   SideBetEntryRow,
   SideBetPayoutRow,
   SideBetRow,
@@ -181,6 +182,64 @@ export function settleSideBet(
 export function deleteSideBet(sideBetId: string): void {
   // Cascades entries + payouts via FK ON DELETE CASCADE.
   getDb().prepare(`DELETE FROM side_bets WHERE id = ?`).run(sideBetId);
+}
+
+// ---- Calcutta lots (Plan A · Phase 4d) ----
+
+export function listLots(sideBetId: string): SideBetCalcuttaLotRow[] {
+  return getDb()
+    .prepare(
+      `SELECT * FROM side_bet_calcutta_lots WHERE side_bet_id = ? ORDER BY created_at`,
+    )
+    .all(sideBetId) as SideBetCalcuttaLotRow[];
+}
+
+export function upsertLot(args: {
+  sideBetId: string;
+  teamId: string;
+  bidderPlayerId: string;
+  bidCents: number;
+}): SideBetCalcuttaLotRow {
+  const db = getDb();
+  const existing = db
+    .prepare(
+      `SELECT id FROM side_bet_calcutta_lots WHERE side_bet_id = ? AND team_id = ?`,
+    )
+    .get(args.sideBetId, args.teamId) as { id: string } | undefined;
+  if (existing) {
+    db.prepare(
+      `UPDATE side_bet_calcutta_lots
+         SET bidder_player_id = ?, bid_cents = ?
+         WHERE id = ?`,
+    ).run(args.bidderPlayerId, args.bidCents, existing.id);
+    return db
+      .prepare(`SELECT * FROM side_bet_calcutta_lots WHERE id = ?`)
+      .get(existing.id) as SideBetCalcuttaLotRow;
+  }
+  const id = genId("sbl");
+  db.prepare(
+    `INSERT INTO side_bet_calcutta_lots
+       (id, side_bet_id, team_id, bidder_player_id, bid_cents)
+       VALUES (?, ?, ?, ?, ?)`,
+  ).run(
+    id,
+    args.sideBetId,
+    args.teamId,
+    args.bidderPlayerId,
+    args.bidCents,
+  );
+  return db
+    .prepare(`SELECT * FROM side_bet_calcutta_lots WHERE id = ?`)
+    .get(id) as SideBetCalcuttaLotRow;
+}
+
+export function deleteLot(sideBetId: string, teamId: string): boolean {
+  const result = getDb()
+    .prepare(
+      `DELETE FROM side_bet_calcutta_lots WHERE side_bet_id = ? AND team_id = ?`,
+    )
+    .run(sideBetId, teamId);
+  return result.changes > 0;
 }
 
 export function updateSideBet(
