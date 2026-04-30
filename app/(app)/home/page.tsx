@@ -155,7 +155,7 @@ export default async function HomePage() {
               return (
                 <Link
                   key={s.team_id}
-                  href={`/teams/${s.team_id}` as never}
+                  href="/leaderboard"
                   className="grid items-center relative md:grid-cols-[40px_1fr_60px_60px_60px_70px] grid-cols-[28px_1fr_50px] hover:opacity-80 transition-opacity"
                   style={{
                     padding: "14px 0",
