@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { listRounds } from "@/lib/repo/rounds";
+import { listTeeTimeGroups } from "@/lib/repo/rounds";
 import { formatRoundDate, formatTeeTime } from "@/lib/utils";
 import { Card, CardContent, CardEyebrow } from "@/components/ui/card";
+import type { TeeTimeGroup } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,7 @@ export default function SchedulePage() {
   const now = new Date();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
+    <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
       <div>
         <div className="eyebrow">Schedule</div>
         <h1 className="font-display text-3xl text-[var(--color-navy)]">Three rounds</h1>
@@ -24,9 +26,10 @@ export default function SchedulePage() {
       {rounds.map((r) => {
         const start = new Date(`${r.date}T${r.tee_time}`);
         const status = r.is_locked ? "FINAL" : start > now ? "UPCOMING" : "LIVE";
+        const groups = listTeeTimeGroups(r.id);
         return (
           <Card key={r.id}>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <CardEyebrow>
@@ -41,6 +44,9 @@ export default function SchedulePage() {
                 </div>
                 <StatusChip status={status as "UPCOMING" | "LIVE" | "FINAL"} />
               </div>
+
+              {groups.length > 0 && <TeeTimePairings groups={groups} />}
+
               <Link
                 href={`/day${r.day}` as never}
                 className="inline-block text-xs uppercase tracking-widest font-ui text-[var(--color-gold)]"
@@ -51,6 +57,36 @@ export default function SchedulePage() {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+function TeeTimePairings({ groups }: { groups: TeeTimeGroup[] }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-[10px] font-ui font-semibold uppercase tracking-[0.2em] text-neutral-500">
+        Tee time pairings
+      </div>
+      <div className="grid gap-1.5">
+        {groups.map((g) => (
+          <div key={g.group_number} className="flex items-center gap-2">
+            <span className="text-[10px] font-ui text-neutral-400 w-4 shrink-0 text-right">
+              {g.group_number}
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {g.players.map((p) => (
+                <span
+                  key={p.id}
+                  className="text-xs font-ui px-2 py-0.5 rounded"
+                  style={{ backgroundColor: p.display_color, color: "#F3ECD8" }}
+                >
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
