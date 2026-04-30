@@ -150,13 +150,10 @@ export default function Day3IndexPage() {
                     </div>
                     {(() => {
                       const g = groupByEntry.get(e.id);
-                      const scorer = g?.scorer_player_id
-                        ? players.get(g.scorer_player_id)
-                        : null;
                       const time = g?.scheduled_time
                         ? formatTeeTime(g.scheduled_time)
                         : null;
-                      return (
+                      return time ? (
                         <div
                           className="font-ui uppercase mt-1"
                           style={{
@@ -165,10 +162,9 @@ export default function Day3IndexPage() {
                             color: "var(--color-stone)",
                           }}
                         >
-                          {time ? `${time} · ` : ""}Scored by{" "}
-                          {scorer?.name ?? "—"}
+                          {time}
                         </div>
-                      );
+                      ) : null;
                     })()}
                   </div>
                 </div>
