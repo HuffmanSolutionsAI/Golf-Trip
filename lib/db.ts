@@ -29,6 +29,9 @@ function init(db: Database.Database) {
   if (n === 0) {
     db.exec(readSql("seed.sql"));
   }
+
+  // Idempotent tee-time pairings seed — always run so existing DBs get the data.
+  db.exec(readSql("seed-tee-times.sql"));
 }
 
 export function getDb(): Database.Database {

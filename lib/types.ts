@@ -71,6 +71,20 @@ export type ScrambleParticipantRow = {
   player_id: string;
 };
 
+export type TeeTimeGroupRow = {
+  id: string;
+  round_id: string;
+  group_number: number;
+  position: number;
+  player_id: string;
+  created_at: string;
+};
+
+export type TeeTimeGroup = {
+  group_number: number;
+  players: { id: string; name: string; team_id: string; display_color: string }[];
+};
+
 export type HoleScoreRow = {
   id: string;
   round_id: string;

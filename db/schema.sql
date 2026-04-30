@@ -100,6 +100,22 @@ CREATE TABLE IF NOT EXISTS scramble_participants (
 );
 
 -- ---------------------------------------------------------------------------
+-- tee_time_groups — who tees off together each day. Each round has 5 groups
+-- of 4 players. Independent of match/scramble groupings (e.g. Day 3 teams
+-- score together but may be split across tee times for pace of play).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tee_time_groups (
+  id           TEXT PRIMARY KEY,
+  round_id     TEXT NOT NULL REFERENCES rounds(id) ON DELETE CASCADE,
+  group_number INTEGER NOT NULL CHECK (group_number BETWEEN 1 AND 5),
+  position     INTEGER NOT NULL CHECK (position BETWEEN 1 AND 4),
+  player_id    TEXT NOT NULL REFERENCES players(id),
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(round_id, group_number, position),
+  UNIQUE(round_id, player_id)
+);
+
+-- ---------------------------------------------------------------------------
 -- hole_scores
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS hole_scores (
