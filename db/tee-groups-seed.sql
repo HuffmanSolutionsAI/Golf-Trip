@@ -23,12 +23,14 @@ INSERT OR IGNORE INTO tee_groups (id, round_id, group_number, scheduled_time, sc
 DELETE FROM tee_group_matches
   WHERE tee_group_id IN ('tg-1-1','tg-1-2','tg-1-3','tg-1-4','tg-1-5');
 
+-- Tee 4 = Foley, Bands, Bot, Matkins → m-06 (Foley/Bands) + m-10 (Matkins/Bot).
+-- Tee 5 = Mallen, Bennett, Luke, Davis → m-09 (Mallen/Bennett) + m-07 (Luke/Davis).
 INSERT INTO tee_group_matches (tee_group_id, match_id) VALUES
   ('tg-1-1', 'm-01'), ('tg-1-1', 'm-02'),
   ('tg-1-2', 'm-04'), ('tg-1-2', 'm-03'),
   ('tg-1-3', 'm-05'), ('tg-1-3', 'm-08'),
-  ('tg-1-4', 'm-06'), ('tg-1-4', 'm-07'),
-  ('tg-1-5', 'm-09'), ('tg-1-5', 'm-10');
+  ('tg-1-4', 'm-06'), ('tg-1-4', 'm-10'),
+  ('tg-1-5', 'm-09'), ('tg-1-5', 'm-07');
 
 -- Heal stale default scorer for Tee 5 (Luke moved to Tee 4 in the latest
 -- pairings; only reset if the scorer is still the old stale default).
@@ -49,10 +51,16 @@ INSERT OR IGNORE INTO tee_groups (id, round_id, group_number, scheduled_time, sc
 DELETE FROM tee_group_entries
   WHERE tee_group_id IN ('tg-2-1','tg-2-2','tg-2-3','tg-2-4','tg-2-5');
 
+-- Pairings per the finalized tee sheet:
+--   I  (08:45) Reid/Bot · Cota/Mellis        → t1-ad + t5-bc
+--   II (08:53) Ham/Matkins · Davis/McArdle    → t2-ad + t4-bc
+--   III(09:01) Pincus/Bennett · Bands/Byrnes  → t3-ad + t2-bc
+--   IV (09:09) Nate/Mason · Ric/Luke          → t4-ad + t3-bc
+--   V  (09:17) Keller/Mallen · Foley/Tom      → t5-ad + t1-bc
 INSERT INTO tee_group_entries (tee_group_id, scramble_entry_id) VALUES
-  ('tg-2-1', 's2-t1-ad'), ('tg-2-1', 's2-t2-bc'),
-  ('tg-2-2', 's2-t2-ad'), ('tg-2-2', 's2-t5-bc'),
-  ('tg-2-3', 's2-t3-ad'), ('tg-2-3', 's2-t4-bc'),
+  ('tg-2-1', 's2-t1-ad'), ('tg-2-1', 's2-t5-bc'),
+  ('tg-2-2', 's2-t2-ad'), ('tg-2-2', 's2-t4-bc'),
+  ('tg-2-3', 's2-t3-ad'), ('tg-2-3', 's2-t2-bc'),
   ('tg-2-4', 's2-t4-ad'), ('tg-2-4', 's2-t3-bc'),
   ('tg-2-5', 's2-t5-ad'), ('tg-2-5', 's2-t1-bc');
 
