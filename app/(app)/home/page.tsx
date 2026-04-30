@@ -153,9 +153,10 @@ export default async function HomePage() {
             {standings.map((s) => {
               const lead = s.rank === 1;
               return (
-                <div
+                <Link
                   key={s.team_id}
-                  className="grid items-center relative md:grid-cols-[40px_1fr_60px_60px_60px_70px] grid-cols-[28px_1fr_50px]"
+                  href={`/teams/${s.team_id}` as never}
+                  className="grid items-center relative md:grid-cols-[40px_1fr_60px_60px_60px_70px] grid-cols-[28px_1fr_50px] hover:opacity-80 transition-opacity"
                   style={{
                     padding: "14px 0",
                     borderBottom: "1px solid rgba(165,136,89,0.25)",
@@ -252,7 +253,7 @@ export default async function HomePage() {
                   >
                     {s.total_points}
                   </span>
-                </div>
+                </Link>
               );
             })}
             <div
@@ -299,12 +300,13 @@ export default async function HomePage() {
                     </span>
                     <StatusBadge status={status} />
                   </div>
-                  <div
-                    className="font-display text-[var(--color-navy)]"
-                    style={{ fontSize: 32, lineHeight: 1.05 }}
+                  <Link
+                    href={`/day${r.day}` as never}
+                    className="font-display text-[var(--color-navy)] hover:text-[var(--color-gold)] transition-colors"
+                    style={{ fontSize: 32, lineHeight: 1.05, display: "block" }}
                   >
                     {r.course_name}
-                  </div>
+                  </Link>
                   <div
                     className="font-body-serif italic mt-1.5"
                     style={{ fontSize: 13, color: "var(--color-stone)" }}
@@ -321,6 +323,7 @@ export default async function HomePage() {
                   >
                     {formatRoundDate(r.date)} · {formatTeeTime(r.tee_time)}
                   </div>
+                  <DayBreakdown day={r.day} standings={standings} />
                 </div>
               );
             })}
@@ -355,6 +358,50 @@ function formatLabel(f: string): string {
   if (f === "singles") return "Singles · net stroke play";
   if (f === "scramble_2man") return "Two-man scramble · pools AD & BC";
   return "Four-man team scramble · for the Cup";
+}
+
+function DayBreakdown({
+  day,
+  standings,
+}: {
+  day: number;
+  standings: ReturnType<typeof computeLeaderboard>;
+}) {
+  const rows = standings
+    .map((s) => ({
+      name: s.name,
+      color: s.display_color,
+      pts: day === 1 ? s.day1_points : day === 2 ? s.day2_points : s.day3_points,
+    }))
+    .sort((a, b) => b.pts - a.pts);
+
+  const hasAny = rows.some((r) => r.pts > 0);
+  if (!hasAny) return null;
+
+  return (
+    <div className="mt-4 space-y-1.5">
+      {rows.map((r) => (
+        <div key={r.name} className="flex items-center gap-2">
+          <span
+            className="inline-block rounded-full shrink-0"
+            style={{ width: 7, height: 7, background: r.color }}
+          />
+          <span
+            className="font-body-serif italic flex-1 truncate"
+            style={{ fontSize: 12, color: "var(--color-ink)" }}
+          >
+            {r.name}
+          </span>
+          <span
+            className="font-mono shrink-0"
+            style={{ fontSize: 12, color: r.pts > 0 ? "var(--color-navy)" : "var(--color-stone)" }}
+          >
+            {r.pts} pt{r.pts !== 1 ? "s" : ""}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function StatusBadge({ status }: { status: "FINAL" | "LIVE" | "UPCOMING" }) {

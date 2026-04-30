@@ -81,9 +81,6 @@ export default function Day2IndexPage() {
       <div className="paper-grain">
         <div className="mx-auto max-w-[1100px] px-5 md:px-8 py-8 md:py-10">
           {groups.map((g) => {
-            const scorer = g.scorer_player_id
-              ? players.get(g.scorer_player_id)
-              : null;
             const groupEntries = g.scramble_entry_ids
               .map((id) => entryById.get(id))
               .filter((e): e is NonNullable<typeof e> => !!e)
@@ -110,19 +107,6 @@ export default function Day2IndexPage() {
                       </span>
                     )}
                   </div>
-                  <span
-                    className="font-ui uppercase"
-                    style={{
-                      fontSize: 10,
-                      letterSpacing: "0.28em",
-                      color: scorer
-                        ? "var(--color-gold)"
-                        : "var(--color-stone)",
-                      fontWeight: 500,
-                    }}
-                  >
-                    Scored by {scorer?.name ?? "—"}
-                  </span>
                 </div>
                 {groupEntries.map((e) => {
                   const team = teams.get(e.team_id);
