@@ -6,9 +6,15 @@ import { LandingSignInForm } from "./_landing/SignInForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ signin?: string }>;
+}) {
   const current = await getCurrentPlayer();
   if (current) redirect("/home");
+  const { signin } = await searchParams;
+  if (!signin) redirect("/home");
 
   const players = listPlayers();
   const teams = listTeams();

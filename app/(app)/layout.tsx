@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { getCurrentPlayer } from "@/lib/session";
 import { TopNav } from "@/components/layout/TopNav";
 import { LiveTicker } from "@/components/layout/LiveTicker";
@@ -13,15 +12,15 @@ export default async function AuthedLayout({
   children: React.ReactNode;
 }) {
   const player = await getCurrentPlayer();
-  if (!player) redirect("/");
 
   return (
     <div className="min-h-[100dvh] bg-[var(--color-cream)] flex flex-col">
       <LiveTicker />
       <TopNav
-        playerName={player.name}
-        teamName={player.team?.name}
-        isAdmin={!!player.is_admin}
+        playerName={player?.name}
+        teamName={player?.team?.name}
+        isAdmin={!!player?.is_admin}
+        spectator={!player}
       />
       <main className="flex-1 pb-16 md:pb-0">{children}</main>
       <SiteFooter />

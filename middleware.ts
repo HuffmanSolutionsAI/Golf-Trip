@@ -1,37 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = new Set<string>(["/", "/leaderboard"]);
-const PUBLIC_PREFIXES = [
-  "/_next",
-  "/api/session/login",
-  "/api/auth/", // magic-link request + verify (Plan A · Phase 2)
-  "/api/events", // SSE stream — read-only, no auth needed; covers
-  // /api/events itself AND /api/events/create which enforces auth in-route
-  "/auth/", // sign-in / check-email / error pages (Plan A · Phase 2)
-  "/events/", // public-read event surfaces (Plan A · Phase 1)
-  // Dashboard surfaces redirect to /auth/sign-in via in-page checks rather
-  // than the N&P landing, so we let middleware pass and let the page route.
-  "/dashboard",
-  "/favicon",
-  "/badge.svg",
-];
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  const isPublic =
-    PUBLIC_PATHS.has(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
-
-  if (isPublic) return NextResponse.next();
-
-  const cookie = request.cookies.get("np_session")?.value;
-  if (!cookie) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
-  }
-
+// Read access is public on this site. Write APIs (score entry, team rename,
+// admin actions) enforce authentication in their route handlers, so the
+// middleware no longer gates pages behind a session cookie.
+export function middleware(_request: NextRequest) {
   return NextResponse.next();
 }
 
