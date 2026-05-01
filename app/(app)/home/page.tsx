@@ -1,10 +1,20 @@
 import Link from "next/link";
 import { listRounds } from "@/lib/repo/rounds";
 import { listAllScores } from "@/lib/repo/scores";
-import { computeLeaderboard } from "@/lib/repo/standings";
+import {
+  computeDay1IndividualLeaderboard,
+  computeDay2EntryLeaderboard,
+  computeDay3EntryLeaderboard,
+  computeLeaderboard,
+} from "@/lib/repo/standings";
 import { listPlayers } from "@/lib/repo/players";
 import { formatRoundDate, formatTeeTime, toRoman } from "@/lib/utils";
-import type { RoundRow } from "@/lib/types";
+import type {
+  Day1IndividualRow,
+  Day2EntryDisplayRow,
+  Day3EntryDisplayRow,
+  RoundRow,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -141,7 +151,11 @@ export default async function HomePage() {
           {/* Standings panel */}
           <div>
             <div className="flex items-baseline justify-between mb-3.5">
-              <div className="eyebrow">The Standings</div>
+              <div className="eyebrow">
+                {liveRound
+                  ? `Day ${toRoman(liveRound.day)} Live`
+                  : "The Standings"}
+              </div>
               <span
                 className="font-mono"
                 style={{ fontSize: 10, color: "var(--color-cream)", opacity: 0.6 }}
@@ -150,112 +164,120 @@ export default async function HomePage() {
               </span>
             </div>
             <div className="rule-gold" />
-            {standings.map((s) => {
-              const lead = s.rank === 1;
-              return (
-                <Link
-                  key={s.team_id}
-                  href="/leaderboard"
-                  className="grid items-center relative md:grid-cols-[40px_1fr_60px_60px_60px_70px] grid-cols-[28px_1fr_50px] hover:opacity-80 transition-opacity"
-                  style={{
-                    padding: "14px 0",
-                    borderBottom: "1px solid rgba(165,136,89,0.25)",
-                  }}
-                >
-                  {lead && (
-                    <span
-                      className="absolute"
-                      style={{
-                        left: -12,
-                        top: 0,
-                        bottom: 0,
-                        width: 3,
-                        background: "var(--color-gold)",
-                      }}
-                    />
-                  )}
-                  <span
-                    className="font-mono md:text-xl text-base"
+            {liveRound?.day === 1 ? (
+              <Day1LiveStandings rows={computeDay1IndividualLeaderboard()} />
+            ) : liveRound?.day === 2 ? (
+              <Day2LiveStandings rows={computeDay2EntryLeaderboard()} />
+            ) : liveRound?.day === 3 ? (
+              <Day3LiveStandings rows={computeDay3EntryLeaderboard()} />
+            ) : (
+              standings.map((s) => {
+                const lead = s.rank === 1;
+                return (
+                  <Link
+                    key={s.team_id}
+                    href="/leaderboard"
+                    className="grid items-center relative md:grid-cols-[40px_1fr_60px_60px_60px_70px] grid-cols-[28px_1fr_50px] hover:opacity-80 transition-opacity"
                     style={{
-                      color: lead ? "var(--color-gold)" : "var(--color-cream)",
+                      padding: "14px 0",
+                      borderBottom: "1px solid rgba(165,136,89,0.25)",
                     }}
                   >
-                    {s.rank}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
+                    {lead && (
                       <span
-                        className="inline-block rounded-full shrink-0"
+                        className="absolute"
                         style={{
-                          width: 8,
-                          height: 8,
-                          background: s.display_color,
+                          left: -12,
+                          top: 0,
+                          bottom: 0,
+                          width: 3,
+                          background: "var(--color-gold)",
                         }}
                       />
-                      <span
-                        className="font-display truncate"
-                        style={{
-                          fontSize: 22,
-                          color: "var(--color-cream)",
-                        }}
-                      >
-                        {s.name}
-                      </span>
-                    </div>
-                    <div
-                      className="hidden md:block font-body-serif italic mt-1 truncate"
+                    )}
+                    <span
+                      className="font-mono md:text-xl text-base"
                       style={{
-                        fontSize: 12,
-                        color: "var(--color-cream)",
-                        opacity: 0.6,
+                        color: lead ? "var(--color-gold)" : "var(--color-cream)",
                       }}
                     >
-                      {(playersByTeam.get(s.team_id) ?? []).join(" · ")}
+                      {s.rank}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="inline-block rounded-full shrink-0"
+                          style={{
+                            width: 8,
+                            height: 8,
+                            background: s.display_color,
+                          }}
+                        />
+                        <span
+                          className="font-display truncate"
+                          style={{
+                            fontSize: 22,
+                            color: "var(--color-cream)",
+                          }}
+                        >
+                          {s.name}
+                        </span>
+                      </div>
+                      <div
+                        className="hidden md:block font-body-serif italic mt-1 truncate"
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-cream)",
+                          opacity: 0.6,
+                        }}
+                      >
+                        {(playersByTeam.get(s.team_id) ?? []).join(" · ")}
+                      </div>
                     </div>
-                  </div>
-                  <span
-                    className="hidden md:inline font-mono text-right"
-                    style={{
-                      fontSize: 14,
-                      color: "var(--color-cream)",
-                      opacity: 0.85,
-                    }}
-                  >
-                    {s.day1_points}
-                  </span>
-                  <span
-                    className="hidden md:inline font-mono text-right"
-                    style={{
-                      fontSize: 14,
-                      color: "var(--color-cream)",
-                      opacity: 0.85,
-                    }}
-                  >
-                    {s.day2_points}
-                  </span>
-                  <span
-                    className="hidden md:inline font-mono text-right"
-                    style={{
-                      fontSize: 14,
-                      color: "var(--color-cream)",
-                      opacity: 0.4,
-                    }}
-                  >
-                    {s.day3_points || "—"}
-                  </span>
-                  <span
-                    className="font-mono text-right"
-                    style={{
-                      fontSize: 22,
-                      color: "var(--color-gold)",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {s.total_points}
-                  </span>
-                </Link>
-              );
-            })}
+                    <span
+                      className="hidden md:inline font-mono text-right"
+                      style={{
+                        fontSize: 14,
+                        color: "var(--color-cream)",
+                        opacity: 0.85,
+                      }}
+                    >
+                      {s.day1_points}
+                    </span>
+                    <span
+                      className="hidden md:inline font-mono text-right"
+                      style={{
+                        fontSize: 14,
+                        color: "var(--color-cream)",
+                        opacity: 0.85,
+                      }}
+                    >
+                      {s.day2_points}
+                    </span>
+                    <span
+                      className="hidden md:inline font-mono text-right"
+                      style={{
+                        fontSize: 14,
+                        color: "var(--color-cream)",
+                        opacity: 0.4,
+                      }}
+                    >
+                      {s.day3_points || "—"}
+                    </span>
+                    <span
+                      className="font-mono text-right"
+                      style={{
+                        fontSize: 22,
+                        color: "var(--color-gold)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {s.total_points}
+                    </span>
+                  </Link>
+                );
+              })
+            )}
             <div
               className="mt-3.5 font-ui uppercase"
               style={{
@@ -442,5 +464,174 @@ function StatusBadge({ status }: { status: "FINAL" | "LIVE" | "UPCOMING" }) {
     <span className={base} style={{ ...styles, color: "var(--color-stone)" }}>
       UPCOMING
     </span>
+  );
+}
+
+function fmtToPar(n: number): string {
+  if (n === 0) return "E";
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+function LiveStandingsRow({
+  rank,
+  primary,
+  secondary,
+  color,
+  toPar,
+  thru,
+  href,
+  highlight,
+}: {
+  rank: string;
+  primary: string;
+  secondary?: string | null;
+  color: string;
+  toPar: number;
+  thru: number;
+  href: string;
+  highlight: boolean;
+}) {
+  const started = thru > 0;
+  return (
+    <Link
+      href={href as never}
+      className="grid items-center relative md:grid-cols-[40px_1fr_70px_60px] grid-cols-[28px_1fr_60px] hover:opacity-80 transition-opacity"
+      style={{
+        padding: "12px 0",
+        borderBottom: "1px solid rgba(165,136,89,0.25)",
+      }}
+    >
+      {highlight && (
+        <span
+          className="absolute"
+          style={{
+            left: -12,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            background: "var(--color-gold)",
+          }}
+        />
+      )}
+      <span
+        className="font-mono md:text-lg text-sm"
+        style={{
+          color: highlight ? "var(--color-gold)" : "var(--color-cream)",
+        }}
+      >
+        {rank}
+      </span>
+      <div className="min-w-0">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="inline-block rounded-full shrink-0"
+            style={{ width: 8, height: 8, background: color }}
+          />
+          <span
+            className="font-display truncate"
+            style={{ fontSize: 18, color: "var(--color-cream)" }}
+          >
+            {primary}
+          </span>
+        </div>
+        {secondary && (
+          <div
+            className="hidden md:block font-body-serif italic mt-1 truncate"
+            style={{
+              fontSize: 11,
+              color: "var(--color-cream)",
+              opacity: 0.6,
+            }}
+          >
+            {secondary}
+          </div>
+        )}
+      </div>
+      <span
+        className="font-mono text-right"
+        style={{
+          fontSize: 18,
+          color: started ? "var(--color-gold)" : "var(--color-cream)",
+          opacity: started ? 1 : 0.4,
+          fontWeight: 500,
+        }}
+      >
+        {started ? fmtToPar(toPar) : "—"}
+      </span>
+      <span
+        className="hidden md:inline font-mono text-right"
+        style={{
+          fontSize: 11,
+          color: "var(--color-cream)",
+          opacity: 0.55,
+        }}
+      >
+        {started ? `THRU ${thru}` : ""}
+      </span>
+    </Link>
+  );
+}
+
+function Day1LiveStandings({ rows }: { rows: Day1IndividualRow[] }) {
+  return (
+    <>
+      {rows.map((r) => (
+        <LiveStandingsRow
+          key={r.player_id}
+          rank={r.rank > 0 ? `${r.rank}` : "—"}
+          primary={r.player_name}
+          secondary={`${r.team_name} · vs ${r.opponent_name}`}
+          color={r.display_color}
+          toPar={r.score_to_par}
+          thru={r.holes_thru}
+          href={`/day1/matches/${r.match_id}`}
+          highlight={r.rank === 1 && r.holes_thru > 0}
+        />
+      ))}
+    </>
+  );
+}
+
+function Day2LiveStandings({ rows }: { rows: Day2EntryDisplayRow[] }) {
+  return (
+    <>
+      {rows.map((r) => (
+        <LiveStandingsRow
+          key={r.entry_id}
+          rank={`${r.pool}${r.rank_in_pool ? r.rank_in_pool : ""}`}
+          primary={
+            r.participant_names.length
+              ? r.participant_names.join(" & ")
+              : r.team_name
+          }
+          secondary={r.team_name}
+          color={r.display_color}
+          toPar={r.score_to_par}
+          thru={r.holes_thru}
+          href={`/day2/entries/${r.entry_id}`}
+          highlight={r.rank_in_pool === 1 && r.holes_thru > 0}
+        />
+      ))}
+    </>
+  );
+}
+
+function Day3LiveStandings({ rows }: { rows: Day3EntryDisplayRow[] }) {
+  return (
+    <>
+      {rows.map((r) => (
+        <LiveStandingsRow
+          key={r.entry_id}
+          rank={r.rank > 0 ? `${r.rank}` : "—"}
+          primary={r.team_name}
+          secondary={r.participant_names.join(" · ")}
+          color={r.display_color}
+          toPar={r.score_to_par}
+          thru={r.holes_thru}
+          href={`/day3/entries/${r.entry_id}`}
+          highlight={r.rank === 1 && r.holes_thru > 0}
+        />
+      ))}
+    </>
   );
 }
