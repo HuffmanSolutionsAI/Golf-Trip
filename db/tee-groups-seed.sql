@@ -23,19 +23,21 @@ INSERT OR IGNORE INTO tee_groups (id, round_id, group_number, scheduled_time, sc
 DELETE FROM tee_group_matches
   WHERE tee_group_id IN ('tg-1-1','tg-1-2','tg-1-3','tg-1-4','tg-1-5');
 
--- Tee 4 = Foley, Bands, Bot, Matkins → m-06 (Foley/Bands) + m-10 (Matkins/Bot).
--- Tee 5 = Mallen, Bennett, Luke, Davis → m-09 (Mallen/Bennett) + m-07 (Luke/Davis).
+-- Tee 4 = Foley, Bands, Luke, Davis → m-06 (Foley/Bands) + m-07 (Luke/Davis).
+-- Tee 5 = Mallen, Bennett, Matkins, Bot → m-09 (Mallen/Bennett) + m-10 (Matkins/Bot).
 INSERT INTO tee_group_matches (tee_group_id, match_id) VALUES
   ('tg-1-1', 'm-01'), ('tg-1-1', 'm-02'),
   ('tg-1-2', 'm-04'), ('tg-1-2', 'm-03'),
   ('tg-1-3', 'm-05'), ('tg-1-3', 'm-08'),
-  ('tg-1-4', 'm-06'), ('tg-1-4', 'm-10'),
-  ('tg-1-5', 'm-09'), ('tg-1-5', 'm-07');
+  ('tg-1-4', 'm-06'), ('tg-1-4', 'm-07'),
+  ('tg-1-5', 'm-09'), ('tg-1-5', 'm-10');
 
--- Heal stale default scorer for Tee 5 (Luke moved to Tee 4 in the latest
--- pairings; only reset if the scorer is still the old stale default).
+-- Heal stale default scorers if a now-absent player is still set on either
+-- group. Luke/Davis moved into Tee 4; Matkins/Bot moved into Tee 5.
+UPDATE tee_groups SET scorer_player_id = 'p-foley', updated_at = datetime('now')
+  WHERE id = 'tg-1-4' AND scorer_player_id IN ('p-matkins', 'p-bot');
 UPDATE tee_groups SET scorer_player_id = 'p-mallen', updated_at = datetime('now')
-  WHERE id = 'tg-1-5' AND scorer_player_id = 'p-luke';
+  WHERE id = 'tg-1-5' AND scorer_player_id IN ('p-luke', 'p-davis');
 
 -- ---------------------------------------------------------------------------
 -- Day 2 — round-2 (Talamore · base 08:45). Five groups, each containing one
