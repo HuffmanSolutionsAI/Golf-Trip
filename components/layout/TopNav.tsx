@@ -97,7 +97,7 @@ export function TopNav({
         <div className="flex items-center gap-3.5 shrink-0">
           {spectator ? (
             <Link
-              href="/"
+              href="/?signin=1"
               className="font-ui uppercase"
               style={{
                 fontSize: 10,
@@ -179,7 +179,19 @@ export function TopNav({
           </div>
         </Link>
         <div className="flex items-center gap-3">
-          {!spectator && (
+          {spectator ? (
+            <Link
+              href="/?signin=1"
+              className="font-ui uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.22em",
+                color: "var(--color-gold-light)",
+              }}
+            >
+              Sign in →
+            </Link>
+          ) : (
             <button
               onClick={() => setProfileOpen((v) => !v)}
               className="flex items-center justify-center"
@@ -327,6 +339,27 @@ function MobileDrawer({
               </li>
             );
           })}
+          {spectator && (
+            <>
+              <li className="mt-4 px-4">
+                <div className="rule-gold" style={{ opacity: 0.3, marginBottom: 12 }} />
+              </li>
+              <li>
+                <Link
+                  href="/?signin=1"
+                  onClick={onClose}
+                  className="block px-4 py-3 font-ui font-medium uppercase"
+                  style={{
+                    fontSize: 13,
+                    letterSpacing: "0.22em",
+                    color: "var(--color-gold-light)",
+                  }}
+                >
+                  Sign in →
+                </Link>
+              </li>
+            </>
+          )}
           {/* Auxiliary */}
           {!spectator && (
             <>
