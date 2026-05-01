@@ -68,6 +68,13 @@ export function getTeeGroupForMatch(matchId: string): TeeGroupRow | null {
   return row ?? null;
 }
 
+export function listMatchIdsForTeeGroup(teeGroupId: string): string[] {
+  const rows = getDb()
+    .prepare("SELECT match_id FROM tee_group_matches WHERE tee_group_id = ?")
+    .all(teeGroupId) as { match_id: string }[];
+  return rows.map((r) => r.match_id);
+}
+
 export function getTeeGroupForEntry(entryId: string): TeeGroupRow | null {
   const row = getDb()
     .prepare(
