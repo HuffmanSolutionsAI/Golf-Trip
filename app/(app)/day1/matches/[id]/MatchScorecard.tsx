@@ -70,7 +70,7 @@ export function MatchScorecard(props: Props) {
   const scoresByPlayer = new Map<string, Map<number, number>>();
   for (const p of allPlayers) scoresByPlayer.set(p.id, new Map());
   scores.forEach((s) => {
-    if (scoresByPlayer.has(s.player_id)) {
+    if (s.player_id && scoresByPlayer.has(s.player_id)) {
       scoresByPlayer.get(s.player_id)!.set(s.hole_number, s.strokes);
     }
   });
