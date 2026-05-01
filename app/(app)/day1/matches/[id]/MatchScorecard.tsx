@@ -258,29 +258,23 @@ export function MatchScorecard(props: Props) {
                 >
                   Par
                 </th>
-                {allPlayers.map((p, i) => {
-                  const startsNewMatch = i > 0 && i % 2 === 0;
-                  return (
-                    <th
-                      key={p.id}
-                      className="py-2.5 text-right"
-                      style={{
-                        paddingRight: i === allPlayers.length - 1 ? 12 : 0,
-                        color: "var(--color-cream)",
-                        fontFamily: "var(--font-ui)",
-                        fontSize: 10,
-                        letterSpacing: "0.18em",
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        borderLeft: startsNewMatch
-                          ? "1px solid rgba(165,136,89,0.5)"
-                          : undefined,
-                      }}
-                    >
-                      {p.name}
-                    </th>
-                  );
-                })}
+                {allPlayers.map((p, i) => (
+                  <th
+                    key={p.id}
+                    className="py-2.5 text-right"
+                    style={{
+                      paddingRight: i === allPlayers.length - 1 ? 12 : 0,
+                      color: "var(--color-cream)",
+                      fontFamily: "var(--font-ui)",
+                      fontSize: 10,
+                      letterSpacing: "0.18em",
+                      fontWeight: 500,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {p.name}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -315,7 +309,6 @@ export function MatchScorecard(props: Props) {
                     </td>
                     {allPlayers.map((p, i) => {
                       const s = scoresByPlayer.get(p.id)?.get(h.hole_number);
-                      const startsNewMatch = i > 0 && i % 2 === 0;
                       return (
                         <td
                           key={p.id}
@@ -323,9 +316,6 @@ export function MatchScorecard(props: Props) {
                           style={{
                             paddingRight: i === allPlayers.length - 1 ? 12 : 0,
                             color: "var(--color-navy)",
-                            borderLeft: startsNewMatch
-                              ? "1px solid var(--color-rule)"
-                              : undefined,
                           }}
                           onClick={() =>
                             canEnter &&
@@ -384,9 +374,58 @@ export function MatchScorecard(props: Props) {
           <HoleEntrySheet
             open
             onClose={() => setSheet(null)}
-            onSubmit={(strokes) =>
-              saveScore(sheet.matchId, sheet.playerId, sheet.holeNumber, strokes)
-            }
+            onSubmit={async (strokes) => {
+              const justSavedHole = sheet.holeNumber;
+              const justSavedPlayer = sheet.playerId;
+              const justSavedPar = sheet.par;
+              const wasEdit = sheet.initial !== null;
+              await saveScore(
+                sheet.matchId,
+                justSavedPlayer,
+                justSavedHole,
+                strokes,
+              );
+              // Edits just close the sheet — only new entries auto-advance.
+              if (wasEdit) {
+                setSheet(null);
+                return;
+              }
+              // Auto-advance: find the next player on the same hole who has
+              // no score (excluding the one we just saved). Walk forward in
+              // display order so entry runs Reid → Ham → Pincus → Nate.
+              const startIndex = allPlayers.findIndex(
+                (p) => p.id === justSavedPlayer,
+              );
+              let nextPlayer: Player | null = null;
+              for (let offset = 1; offset <= allPlayers.length; offset++) {
+                const idx = (startIndex + offset) % allPlayers.length;
+                const candidate = allPlayers[idx];
+                if (candidate.id === justSavedPlayer) continue;
+                const has =
+                  scoresByPlayer.get(candidate.id)?.has(justSavedHole) ?? false;
+                if (!has) {
+                  nextPlayer = candidate;
+                  break;
+                }
+              }
+              if (nextPlayer) {
+                const m = matchByPlayer.get(nextPlayer.id)!;
+                const notes: string[] = [];
+                if (props.round.is_locked)
+                  notes.push("Round is locked — admin only");
+                setSheet({
+                  holeNumber: justSavedHole,
+                  par: justSavedPar,
+                  matchId: m.id,
+                  playerId: nextPlayer.id,
+                  playerLabel: nextPlayer.name,
+                  initial: null,
+                  notes,
+                });
+              } else {
+                setSheet(null);
+              }
+            }}
             holeNumber={sheet.holeNumber}
             par={sheet.par}
             initialStrokes={sheet.initial}

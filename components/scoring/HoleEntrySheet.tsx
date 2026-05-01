@@ -45,7 +45,6 @@ export function HoleEntrySheet({
     setSaving(true);
     try {
       await onSubmit(strokes);
-      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed.");
     } finally {

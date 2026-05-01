@@ -327,7 +327,7 @@ function Day1Tab({ rows, round }: { rows: Day1IndividualRow[]; round?: RoundRow 
               {formatRank(r.rank, tieMap.get(r.rank) ?? 1)}
             </span>
             <Link
-              href={`/players/${r.player_id}`}
+              href={`/day1/matches/${r.match_id}`}
               className="flex items-center gap-2 min-w-0"
             >
               <span
