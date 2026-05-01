@@ -276,7 +276,10 @@ export function ScrambleScorecard(props: Props) {
         <HoleEntrySheet
           open
           onClose={() => setSheet(null)}
-          onSubmit={(strokes) => saveScore(sheet.holeNumber, strokes)}
+          onSubmit={async (strokes) => {
+            await saveScore(sheet.holeNumber, strokes);
+            setSheet(null);
+          }}
           holeNumber={sheet.holeNumber}
           par={sheet.par}
           initialStrokes={sheet.initial}
