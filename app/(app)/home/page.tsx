@@ -495,7 +495,7 @@ function LiveStandingsRow({
   return (
     <Link
       href={href as never}
-      className="grid items-center relative md:grid-cols-[40px_1fr_70px_60px] grid-cols-[28px_1fr_50px_44px] hover:opacity-80 transition-opacity"
+      className="grid items-center relative md:grid-cols-[40px_1fr_70px_60px] grid-cols-[28px_1fr_60px] hover:opacity-80 transition-opacity"
       style={{
         padding: "12px 0",
         borderBottom: "1px solid rgba(165,136,89,0.25)",
@@ -559,7 +559,7 @@ function LiveStandingsRow({
         {started ? fmtToPar(toPar) : "—"}
       </span>
       <span
-        className="font-mono text-right"
+        className="hidden md:inline font-mono text-right"
         style={{
           fontSize: 11,
           color: "var(--color-cream)",
