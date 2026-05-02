@@ -104,6 +104,18 @@ export function ScrambleScorecard(props: Props) {
     router.refresh();
   }
 
+  async function deleteScoreFor(holeNumber: number) {
+    const existing = scores.find((s) => s.hole_number === holeNumber);
+    if (!existing) return;
+    setScores((prev) => prev.filter((s) => s.hole_number !== holeNumber));
+    const res = await fetch(`/api/scores/${existing.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Delete failed.");
+    }
+    router.refresh();
+  }
+
   const backHref = props.mode === "day2" ? "/day2" : "/day3";
   const under = Math.max(0, parThru - raw);
   const over = Math.max(0, raw - parThru);
@@ -278,6 +290,10 @@ export function ScrambleScorecard(props: Props) {
           onClose={() => setSheet(null)}
           onSubmit={async (strokes) => {
             await saveScore(sheet.holeNumber, strokes);
+            setSheet(null);
+          }}
+          onDelete={async () => {
+            await deleteScoreFor(sheet.holeNumber);
             setSheet(null);
           }}
           holeNumber={sheet.holeNumber}

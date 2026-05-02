@@ -145,6 +145,24 @@ export function MatchScorecard(props: Props) {
     router.refresh();
   }
 
+  async function deleteScoreFor(playerId: string, holeNumber: number) {
+    const existing = scores.find(
+      (s) => s.player_id === playerId && s.hole_number === holeNumber,
+    );
+    if (!existing) return;
+    setScores((prev) =>
+      prev.filter(
+        (s) => !(s.player_id === playerId && s.hole_number === holeNumber),
+      ),
+    );
+    const res = await fetch(`/api/scores/${existing.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "Delete failed.");
+    }
+    router.refresh();
+  }
+
   function openHole(playerId: string, holeNumber: number, par: number) {
     const player = allPlayers.find((p) => p.id === playerId);
     const m = matchByPlayer.get(playerId);
@@ -374,6 +392,10 @@ export function MatchScorecard(props: Props) {
           <HoleEntrySheet
             open
             onClose={() => setSheet(null)}
+            onDelete={async () => {
+              await deleteScoreFor(sheet.playerId, sheet.holeNumber);
+              setSheet(null);
+            }}
             onSubmit={async (strokes) => {
               const justSavedHole = sheet.holeNumber;
               const justSavedPlayer = sheet.playerId;
