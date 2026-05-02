@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Minus, Plus } from "lucide-react";
+import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onSubmit: (strokes: number) => Promise<void> | void;
+  onDelete?: () => Promise<void> | void;
   holeNumber: number;
   par: number;
   initialStrokes?: number | null;
@@ -20,6 +21,7 @@ export function HoleEntrySheet({
   open,
   onClose,
   onSubmit,
+  onDelete,
   holeNumber,
   par,
   initialStrokes,
@@ -28,6 +30,7 @@ export function HoleEntrySheet({
 }: Props) {
   const [strokes, setStrokes] = useState<number>(initialStrokes ?? par);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,6 +54,21 @@ export function HoleEntrySheet({
       setSaving(false);
     }
   }
+
+  async function destroy() {
+    if (!onDelete) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await onDelete();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const canDelete = !!onDelete && initialStrokes !== null && initialStrokes !== undefined;
 
   if (!open) return null;
 
@@ -141,10 +159,21 @@ export function HoleEntrySheet({
           size="lg"
           variant="primary"
           className="w-full"
-          disabled={saving}
+          disabled={saving || deleting}
         >
           {saving ? "Saving…" : "Save score"}
         </Button>
+
+        {canDelete && (
+          <button
+            onClick={destroy}
+            disabled={saving || deleting}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2.5 text-sm font-ui uppercase tracking-[0.2em] text-[var(--color-oxblood)] disabled:opacity-50"
+          >
+            <Trash2 size={14} />
+            {deleting ? "Deleting…" : "Delete score"}
+          </button>
+        )}
       </div>
     </div>
   );
