@@ -30,30 +30,48 @@ export default async function HomePage() {
     playersByTeam.set(p.team_id, arr);
   }
 
-  // Determine live / next round
-  const now = new Date();
-  let liveRound: RoundRow | undefined;
-  let liveThru = 0;
-  for (const r of rounds) {
-    const rs = scores.filter((s) => s.round_id === r.id);
-    if (!r.is_locked && rs.length > 0) {
-      liveRound = r;
-      liveThru = rs.reduce((m, s) => Math.max(m, s.hole_number), 0);
-      break;
-    }
+  // Per-round expected score counts (used to know when a round is fully
+  // entered). singles = 10 matches × 18 holes × 2 players; scramble_2man = 10
+  // entries × 18 holes; team scramble = 5 entries × 18 holes.
+  function expectedScores(r: RoundRow): number {
+    if (r.format === "singles") return 10 * 18 * 2;
+    if (r.format === "scramble_2man") return 10 * 18;
+    return 5 * 18;
   }
-  const upcomingRound = !liveRound
-    ? rounds.find((r) => new Date(`${r.date}T${r.tee_time}`) > now)
+
+  // Determine round state. A round is COMPLETE when all expected scores are
+  // entered (or admin has locked it). LIVE when some scores are in but not
+  // all. UPCOMING when nothing has been entered yet.
+  type RoundState = "COMPLETE" | "LIVE" | "UPCOMING";
+  function roundStateFor(r: RoundRow): RoundState {
+    const count = scores.filter((s) => s.round_id === r.id).length;
+    const expected = expectedScores(r);
+    if (r.is_locked || count >= expected) return "COMPLETE";
+    if (count > 0) return "LIVE";
+    return "UPCOMING";
+  }
+
+  const states = rounds.map((r) => ({ round: r, state: roundStateFor(r) }));
+  const liveEntry = states.find((x) => x.state === "LIVE");
+  const liveRound = liveEntry?.round;
+  const liveThru = liveRound
+    ? scores
+        .filter((s) => s.round_id === liveRound.id)
+        .reduce((m, s) => Math.max(m, s.hole_number), 0)
+    : 0;
+  const allComplete =
+    states.length > 0 && states.every((x) => x.state === "COMPLETE");
+  const upcomingRound = !liveRound && !allComplete
+    ? states.find((x) => x.state === "UPCOMING")?.round
     : undefined;
-  const allFinal = !liveRound && !upcomingRound;
   const heroDay = liveRound?.day ?? upcomingRound?.day ?? rounds[0]?.day ?? 1;
   const heroCourse = liveRound?.course_name ?? upcomingRound?.course_name ?? rounds[0]?.course_name ?? "";
 
   // Dataset shaping for round-status badges
   function roundStatus(r: RoundRow): "FINAL" | "LIVE" | "UPCOMING" {
-    if (r.is_locked) return "FINAL";
-    const rs = scores.filter((s) => s.round_id === r.id);
-    if (rs.length > 0) return "LIVE";
+    const s = roundStateFor(r);
+    if (s === "COMPLETE") return "FINAL";
+    if (s === "LIVE") return "LIVE";
     return "UPCOMING";
   }
 
@@ -152,9 +170,11 @@ export default async function HomePage() {
           <div>
             <div className="flex items-baseline justify-between mb-3.5">
               <div className="eyebrow">
-                {liveRound
-                  ? `Day ${toRoman(liveRound.day)} Live`
-                  : "The Standings"}
+                {allComplete
+                  ? "Champion"
+                  : liveRound
+                    ? `Day ${toRoman(liveRound.day)} Live`
+                    : "The Standings"}
               </div>
               <span
                 className="font-mono"
@@ -222,6 +242,21 @@ export default async function HomePage() {
                         >
                           {s.name}
                         </span>
+                        {allComplete && lead && (
+                          <span
+                            className="font-ui uppercase shrink-0"
+                            style={{
+                              fontSize: 9,
+                              letterSpacing: "0.28em",
+                              color: "var(--color-navy)",
+                              background: "var(--color-gold)",
+                              padding: "3px 8px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Champion
+                          </span>
+                        )}
                       </div>
                       <div
                         className="hidden md:block font-body-serif italic mt-1 truncate"
