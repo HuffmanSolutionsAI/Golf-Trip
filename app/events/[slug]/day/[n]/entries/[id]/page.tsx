@@ -148,6 +148,7 @@ export default async function EventEntryPage({
       participantNames={data.partNames}
       pool={null}
       canEnter={canEnter}
+      isAdmin={!!me?.is_admin}
       allPlayers={data.allPlayers}
       roundIsLocked={!!data.round.is_locked}
       scorerName={data.scorer?.name ?? null}

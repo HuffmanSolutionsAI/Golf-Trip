@@ -411,6 +411,45 @@ export function Day2GroupScorecard(props: Props) {
               All Pairs
             </Link>
           </div>
+          {props.isAdmin && (
+            <div className="px-5 md:px-0 pt-3">
+              <button
+                onClick={async () => {
+                  const ok = window.confirm(
+                    "Clear all scores for both pairs in this tee time? This cannot be undone.",
+                  );
+                  if (!ok) return;
+                  const entryIds = props.entries.map((e) => e.entry.id);
+                  const res = await fetch("/api/admin/clear-scores", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      roundId: props.round.id,
+                      entryIds,
+                    }),
+                  });
+                  if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    window.alert(body.error ?? "Clear failed.");
+                    return;
+                  }
+                  setScores([]);
+                  router.refresh();
+                }}
+                className="w-full font-ui font-medium uppercase"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.3em",
+                  padding: "12px 0",
+                  color: "var(--color-oxblood)",
+                  border: "1px solid var(--color-oxblood)",
+                  background: "transparent",
+                }}
+              >
+                Clear all scores
+              </button>
+            </div>
+          )}
         </div>
 
         {sheet && (
