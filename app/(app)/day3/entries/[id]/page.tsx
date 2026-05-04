@@ -50,6 +50,7 @@ export default async function Day3EntryPage({
       team={team}
       participantNames={partNames}
       canEnter={canEnter}
+      isAdmin={!!me?.is_admin}
       allPlayers={allPlayers}
       roundIsLocked={!!round.is_locked}
       scorerName={scorer?.name ?? null}

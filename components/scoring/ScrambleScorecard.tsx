@@ -29,6 +29,7 @@ type Props = {
   poolRanks?: Day2PoolRankRow[];
   teamsById?: Record<string, TeamRow>;
   canEnter: boolean;
+  isAdmin?: boolean;
   roundIsLocked: boolean;
   allPlayers?: PlayerRow[];
   scorerName?: string | null;
@@ -283,6 +284,43 @@ export function ScrambleScorecard(props: Props) {
             Enter hole {firstEmpty}
           </Button>
         </div>
+      )}
+
+      {props.isAdmin && (
+        <button
+          onClick={async () => {
+            const ok = window.confirm(
+              "Clear all scores for this entry in this round? This cannot be undone.",
+            );
+            if (!ok) return;
+            const res = await fetch("/api/admin/clear-scores", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                roundId: props.round.id,
+                entryIds: [props.entryId],
+              }),
+            });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              window.alert(body.error ?? "Clear failed.");
+              return;
+            }
+            setScores([]);
+            router.refresh();
+          }}
+          className="w-full font-ui font-medium uppercase"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.3em",
+            padding: "12px 0",
+            color: "var(--color-oxblood)",
+            border: "1px solid var(--color-oxblood)",
+            background: "transparent",
+          }}
+        >
+          Clear all scores
+        </button>
       )}
 
       {sheet && (

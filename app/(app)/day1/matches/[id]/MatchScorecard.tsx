@@ -386,6 +386,45 @@ export function MatchScorecard(props: Props) {
               All Matches
             </Link>
           </div>
+          {props.isAdmin && (
+            <div className="px-5 md:px-0 pt-3">
+              <button
+                onClick={async () => {
+                  const ok = window.confirm(
+                    "Clear all scores for these four players in this round? This cannot be undone.",
+                  );
+                  if (!ok) return;
+                  const playerIds = allPlayers.map((p) => p.id);
+                  const res = await fetch("/api/admin/clear-scores", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      roundId: props.round.id,
+                      playerIds,
+                    }),
+                  });
+                  if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    window.alert(body.error ?? "Clear failed.");
+                    return;
+                  }
+                  setScores([]);
+                  router.refresh();
+                }}
+                className="w-full font-ui font-medium uppercase"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.3em",
+                  padding: "12px 0",
+                  color: "var(--color-oxblood)",
+                  border: "1px solid var(--color-oxblood)",
+                  background: "transparent",
+                }}
+              >
+                Clear all scores
+              </button>
+            </div>
+          )}
         </div>
 
         {sheet && (
