@@ -27,6 +27,7 @@ type Props = {
   participantNames: string[];
   pool?: "AD" | "BC" | null;
   poolRanks?: Day2PoolRankRow[];
+  teamsById?: Record<string, TeamRow>;
   canEnter: boolean;
   roundIsLocked: boolean;
   allPlayers?: PlayerRow[];
@@ -211,7 +212,7 @@ export function ScrambleScorecard(props: Props) {
                 .map((r) => (
                   <li key={r.entry_id} className="py-1.5 flex justify-between text-sm">
                     <span className="font-ui">
-                      {r.rank_in_pool}. {r.team_id === props.team.id ? props.team.name : `Team …${r.team_id.slice(0, 4)}`}
+                      {r.rank_in_pool}. {props.teamsById?.[r.team_id]?.name ?? props.team.name}
                     </span>
                     <span className="font-mono tabular-nums">{r.team_raw} · thru {r.holes_thru}</span>
                   </li>

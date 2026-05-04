@@ -75,6 +75,15 @@ export function listMatchIdsForTeeGroup(teeGroupId: string): string[] {
   return rows.map((r) => r.match_id);
 }
 
+export function listEntryIdsForTeeGroup(teeGroupId: string): string[] {
+  const rows = getDb()
+    .prepare(
+      "SELECT scramble_entry_id FROM tee_group_entries WHERE tee_group_id = ?",
+    )
+    .all(teeGroupId) as { scramble_entry_id: string }[];
+  return rows.map((r) => r.scramble_entry_id);
+}
+
 export function getTeeGroupForEntry(entryId: string): TeeGroupRow | null {
   const row = getDb()
     .prepare(
