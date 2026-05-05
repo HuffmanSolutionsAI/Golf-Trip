@@ -11,18 +11,19 @@ INSERT OR IGNORE INTO courses (id, name, location, total_par, hole_count) VALUES
   ('course-hyland',             'Hyland Golf Club',               'Southern Pines, NC', 72, 18);
 
 -- ---------------------------------------------------------------------------
--- Pinewild Magnolia — pars known, handicap indices not yet filled in.
+-- Pinewild Magnolia — Blue Tees · Par 72 · 6856 yds · Rating 73.8 / Slope 134.
+-- Verified against the club's published Blue scorecard.
 -- ---------------------------------------------------------------------------
 INSERT OR IGNORE INTO course_holes (course_id, hole_number, par, handicap_index) VALUES
-  ('course-pinewild-magnolia',  1, 4, NULL), ('course-pinewild-magnolia',  2, 5, NULL),
-  ('course-pinewild-magnolia',  3, 3, NULL), ('course-pinewild-magnolia',  4, 4, NULL),
-  ('course-pinewild-magnolia',  5, 4, NULL), ('course-pinewild-magnolia',  6, 4, NULL),
-  ('course-pinewild-magnolia',  7, 3, NULL), ('course-pinewild-magnolia',  8, 5, NULL),
-  ('course-pinewild-magnolia',  9, 4, NULL), ('course-pinewild-magnolia', 10, 4, NULL),
-  ('course-pinewild-magnolia', 11, 4, NULL), ('course-pinewild-magnolia', 12, 3, NULL),
-  ('course-pinewild-magnolia', 13, 5, NULL), ('course-pinewild-magnolia', 14, 4, NULL),
-  ('course-pinewild-magnolia', 15, 4, NULL), ('course-pinewild-magnolia', 16, 4, NULL),
-  ('course-pinewild-magnolia', 17, 3, NULL), ('course-pinewild-magnolia', 18, 5, NULL);
+  ('course-pinewild-magnolia',  1, 5,  1), ('course-pinewild-magnolia',  2, 4, 11),
+  ('course-pinewild-magnolia',  3, 3, 17), ('course-pinewild-magnolia',  4, 4, 13),
+  ('course-pinewild-magnolia',  5, 4,  5), ('course-pinewild-magnolia',  6, 4,  9),
+  ('course-pinewild-magnolia',  7, 3, 15), ('course-pinewild-magnolia',  8, 5,  3),
+  ('course-pinewild-magnolia',  9, 4,  7), ('course-pinewild-magnolia', 10, 4, 12),
+  ('course-pinewild-magnolia', 11, 4,  8), ('course-pinewild-magnolia', 12, 3, 18),
+  ('course-pinewild-magnolia', 13, 5,  2), ('course-pinewild-magnolia', 14, 4,  4),
+  ('course-pinewild-magnolia', 15, 3, 16), ('course-pinewild-magnolia', 16, 4, 14),
+  ('course-pinewild-magnolia', 17, 4, 10), ('course-pinewild-magnolia', 18, 5,  6);
 
 -- ---------------------------------------------------------------------------
 -- Talamore — par 71.
@@ -61,3 +62,50 @@ UPDATE rounds SET course_id = 'course-talamore'
   WHERE id = 'round-2' AND course_id IS NULL;
 UPDATE rounds SET course_id = 'course-hyland'
   WHERE id = 'round-3' AND course_id IS NULL;
+
+-- ---------------------------------------------------------------------------
+-- Heal: Pinewild Magnolia previously had placeholder pars on holes 1, 2, 15
+-- and 17 and no handicap indices. Re-apply the verified Blue Tees scorecard
+-- so deployed DBs catch up on the next boot without db:reset. Updates are
+-- safe to re-run — same target values every time.
+-- ---------------------------------------------------------------------------
+UPDATE course_holes SET par = 5, handicap_index =  1 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  1;
+UPDATE course_holes SET par = 4, handicap_index = 11 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  2;
+UPDATE course_holes SET par = 3, handicap_index = 17 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  3;
+UPDATE course_holes SET par = 4, handicap_index = 13 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  4;
+UPDATE course_holes SET par = 4, handicap_index =  5 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  5;
+UPDATE course_holes SET par = 4, handicap_index =  9 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  6;
+UPDATE course_holes SET par = 3, handicap_index = 15 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  7;
+UPDATE course_holes SET par = 5, handicap_index =  3 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  8;
+UPDATE course_holes SET par = 4, handicap_index =  7 WHERE course_id = 'course-pinewild-magnolia' AND hole_number =  9;
+UPDATE course_holes SET par = 4, handicap_index = 12 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 10;
+UPDATE course_holes SET par = 4, handicap_index =  8 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 11;
+UPDATE course_holes SET par = 3, handicap_index = 18 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 12;
+UPDATE course_holes SET par = 5, handicap_index =  2 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 13;
+UPDATE course_holes SET par = 4, handicap_index =  4 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 14;
+UPDATE course_holes SET par = 3, handicap_index = 16 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 15;
+UPDATE course_holes SET par = 4, handicap_index = 14 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 16;
+UPDATE course_holes SET par = 4, handicap_index = 10 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 17;
+UPDATE course_holes SET par = 5, handicap_index =  6 WHERE course_id = 'course-pinewild-magnolia' AND hole_number = 18;
+
+-- Mirror the same correction onto the live round-1 holes so existing DBs
+-- pick up the change. The holes table is initial-only via seed.sql, so this
+-- heal block is what propagates the fix to a running deployment.
+UPDATE holes SET par = 5, handicap_index =  1 WHERE round_id = 'round-1' AND hole_number =  1;
+UPDATE holes SET par = 4, handicap_index = 11 WHERE round_id = 'round-1' AND hole_number =  2;
+UPDATE holes SET par = 3, handicap_index = 17 WHERE round_id = 'round-1' AND hole_number =  3;
+UPDATE holes SET par = 4, handicap_index = 13 WHERE round_id = 'round-1' AND hole_number =  4;
+UPDATE holes SET par = 4, handicap_index =  5 WHERE round_id = 'round-1' AND hole_number =  5;
+UPDATE holes SET par = 4, handicap_index =  9 WHERE round_id = 'round-1' AND hole_number =  6;
+UPDATE holes SET par = 3, handicap_index = 15 WHERE round_id = 'round-1' AND hole_number =  7;
+UPDATE holes SET par = 5, handicap_index =  3 WHERE round_id = 'round-1' AND hole_number =  8;
+UPDATE holes SET par = 4, handicap_index =  7 WHERE round_id = 'round-1' AND hole_number =  9;
+UPDATE holes SET par = 4, handicap_index = 12 WHERE round_id = 'round-1' AND hole_number = 10;
+UPDATE holes SET par = 4, handicap_index =  8 WHERE round_id = 'round-1' AND hole_number = 11;
+UPDATE holes SET par = 3, handicap_index = 18 WHERE round_id = 'round-1' AND hole_number = 12;
+UPDATE holes SET par = 5, handicap_index =  2 WHERE round_id = 'round-1' AND hole_number = 13;
+UPDATE holes SET par = 4, handicap_index =  4 WHERE round_id = 'round-1' AND hole_number = 14;
+UPDATE holes SET par = 3, handicap_index = 16 WHERE round_id = 'round-1' AND hole_number = 15;
+UPDATE holes SET par = 4, handicap_index = 14 WHERE round_id = 'round-1' AND hole_number = 16;
+UPDATE holes SET par = 4, handicap_index = 10 WHERE round_id = 'round-1' AND hole_number = 17;
+UPDATE holes SET par = 5, handicap_index =  6 WHERE round_id = 'round-1' AND hole_number = 18;
