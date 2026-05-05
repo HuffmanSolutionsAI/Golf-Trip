@@ -5,6 +5,7 @@ import { listRounds } from "@/lib/repo/rounds";
 import {
   computeDay1IndividualLeaderboard,
   computeDay2EntryLeaderboard,
+  computeDay2H2HRows,
   computeDay3EntryLeaderboard,
   computeLeaderboard,
 } from "@/lib/repo/standings";
@@ -26,6 +27,7 @@ export default async function EventLeaderboardPage({
     overall: computeLeaderboard(),
     day1: computeDay1IndividualLeaderboard(),
     day2: computeDay2EntryLeaderboard(),
+    day2H2H: computeDay2H2HRows(),
     day3: computeDay3EntryLeaderboard(),
     rounds: listRounds(),
     players: listPlayers(),
@@ -44,6 +46,7 @@ export default async function EventLeaderboardPage({
       overall={data.overall}
       day1={data.day1}
       day2={data.day2}
+      day2H2H={data.day2H2H}
       day3={data.day3}
       rounds={data.rounds}
       playersByTeam={byTeam}

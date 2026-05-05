@@ -7,13 +7,15 @@ import {
 } from "./scores";
 import { listPlayers, listTeams } from "./players";
 import { listRounds, listAllHoles } from "./rounds";
+import { listTeeGroupsWithMembers } from "./teeGroups";
 import { computeDay1MatchResult } from "@/lib/scoring/day1";
-import { computeDay2PoolRanks } from "@/lib/scoring/day2";
+import { computeDay2H2H, computeDay2PoolRanks } from "@/lib/scoring/day2";
 import { computeDay3Standings } from "@/lib/scoring/day3";
 import type {
   Day1IndividualRow,
   Day1MatchStateRow,
   Day2EntryDisplayRow,
+  Day2H2HDisplayRow,
   Day2PoolRankRow,
   Day3EntryDisplayRow,
   Day3StandingsRow,
@@ -132,6 +134,83 @@ export function computeDay2PoolRankRows(): Day2PoolRankRow[] {
     }
   }
   return out;
+}
+
+export function computeDay2H2HRows(): Day2H2HDisplayRow[] {
+  const s = snapshot();
+  const day2 = s.rounds.find((r) => r.day === 2);
+  if (!day2) return [];
+  const entries = s.entries.filter((e) => e.round_id === day2.id);
+  const teams = new Map(s.teams.map((t) => [t.id, t]));
+  const players = new Map(s.players.map((p) => [p.id, p]));
+  const groups = listTeeGroupsWithMembers().filter(
+    (g) => g.round_id === day2.id,
+  );
+
+  const out: Day2H2HDisplayRow[] = [];
+  for (const g of groups) {
+    if (g.scramble_entry_ids.length !== 2) continue;
+    const [aId, bId] = g.scramble_entry_ids;
+    const aEntry = entries.find((e) => e.id === aId);
+    const bEntry = entries.find((e) => e.id === bId);
+    if (!aEntry || !bEntry) continue;
+    const aTeam = teams.get(aEntry.team_id);
+    const bTeam = teams.get(bEntry.team_id);
+    if (!aTeam || !bTeam) continue;
+
+    const result = computeDay2H2H({
+      groupId: g.id,
+      groupNumber: g.group_number,
+      entryA: {
+        id: aEntry.id,
+        teamId: aEntry.team_id,
+        holeScores: scoreMap(s.scores, (x) => x.scramble_entry_id === aEntry.id),
+      },
+      entryB: {
+        id: bEntry.id,
+        teamId: bEntry.team_id,
+        holeScores: scoreMap(s.scores, (x) => x.scramble_entry_id === bEntry.id),
+      },
+    });
+
+    const partsForEntry = (entryId: string): string[] =>
+      s.participants
+        .filter((p) => p.scramble_entry_id === entryId)
+        .map((p) => players.get(p.player_id)?.name)
+        .filter((n): n is string => !!n);
+
+    out.push({
+      group_id: g.id,
+      group_number: g.group_number,
+      scheduled_time: g.scheduled_time ?? null,
+      entry_a: {
+        entry_id: aEntry.id,
+        team_id: aEntry.team_id,
+        team_name: aTeam.name,
+        display_color: aTeam.display_color,
+        pool: aEntry.pool,
+        participant_names: partsForEntry(aEntry.id),
+        raw: result.entryA.raw,
+        thru: result.entryA.thru,
+        points: result.teamAPoints,
+      },
+      entry_b: {
+        entry_id: bEntry.id,
+        team_id: bEntry.team_id,
+        team_name: bTeam.name,
+        display_color: bTeam.display_color,
+        pool: bEntry.pool,
+        participant_names: partsForEntry(bEntry.id),
+        raw: result.entryB.raw,
+        thru: result.entryB.thru,
+        points: result.teamBPoints,
+      },
+      status: result.status,
+      winner_team_id: result.winnerTeamId,
+      is_tie: result.isTie,
+    });
+  }
+  return out.sort((a, b) => a.group_number - b.group_number);
 }
 
 export function computeDay3StandingRows(): Day3StandingsRow[] {
@@ -385,9 +464,14 @@ export function computeLeaderboard(): LeaderboardRow[] {
     }
   }
 
-  // Day 2
+  // Day 2 — pool placement (15 pts) + head-to-head match (5 pts) = 20 pts.
   for (const row of computeDay2PoolRankRows()) {
     teamPoints.get(row.team_id)!.d2 += row.points;
+  }
+  for (const h2h of computeDay2H2HRows()) {
+    if (h2h.status !== "final") continue;
+    teamPoints.get(h2h.entry_a.team_id)!.d2 += h2h.entry_a.points;
+    teamPoints.get(h2h.entry_b.team_id)!.d2 += h2h.entry_b.points;
   }
 
   // Day 3

@@ -5,6 +5,7 @@ import { useLiveRefresh } from "@/lib/client/useLiveRefresh";
 import type {
   Day1IndividualRow,
   Day2EntryDisplayRow,
+  Day2H2HDisplayRow,
   Day3EntryDisplayRow,
   LeaderboardRow,
   PlayerRow,
@@ -19,6 +20,7 @@ type Props = {
   overall: LeaderboardRow[];
   day1: Day1IndividualRow[];
   day2: Day2EntryDisplayRow[];
+  day2H2H?: Day2H2HDisplayRow[];
   day3: Day3EntryDisplayRow[];
   rounds: RoundRow[];
   playersByTeam: Record<string, PlayerRow[]>;
@@ -42,6 +44,7 @@ export function LeaderboardView({
   overall: overallInit,
   day1: day1Init,
   day2: day2Init,
+  day2H2H: day2H2HInit,
   day3: day3Init,
   rounds,
   playersByTeam,
@@ -51,12 +54,14 @@ export function LeaderboardView({
   const [overall, setOverall] = useState(overallInit);
   const [day1, setDay1] = useState(day1Init);
   const [day2, setDay2] = useState(day2Init);
+  const [day2H2H, setDay2H2H] = useState<Day2H2HDisplayRow[]>(day2H2HInit ?? []);
   const [day3, setDay3] = useState(day3Init);
   const [tab, setTab] = useState<TabKey>("overall");
 
   useEffect(() => setOverall(overallInit), [overallInit]);
   useEffect(() => setDay1(day1Init), [day1Init]);
   useEffect(() => setDay2(day2Init), [day2Init]);
+  useEffect(() => setDay2H2H(day2H2HInit ?? []), [day2H2HInit]);
   useEffect(() => setDay3(day3Init), [day3Init]);
 
   const status = overall[0]?.status_label ?? "Upcoming";
@@ -133,7 +138,13 @@ export function LeaderboardView({
 
         {tab === "overall" && <OverallTab rows={overall} playersByTeam={playersByTeam} />}
         {tab === "day1" && <Day1Tab rows={day1} round={rounds.find((r) => r.day === 1)} />}
-        {tab === "day2" && <Day2Tab rows={day2} round={rounds.find((r) => r.day === 2)} />}
+        {tab === "day2" && (
+          <Day2Tab
+            rows={day2}
+            h2h={day2H2H}
+            round={rounds.find((r) => r.day === 2)}
+          />
+        )}
         {tab === "day3" && <Day3Tab rows={day3} round={rounds.find((r) => r.day === 3)} />}
       </div>
     </div>
@@ -361,12 +372,21 @@ function Day1Tab({ rows, round }: { rows: Day1IndividualRow[]; round?: RoundRow 
 
 // ---------- Day 2 (2-man scrambles, AD + BC pools) ----------
 
-function Day2Tab({ rows, round }: { rows: Day2EntryDisplayRow[]; round?: RoundRow }) {
+function Day2Tab({
+  rows,
+  h2h,
+  round,
+}: {
+  rows: Day2EntryDisplayRow[];
+  h2h: Day2H2HDisplayRow[];
+  round?: RoundRow;
+}) {
   if (rows.length === 0) {
     return <EmptyState message="Day 2 leaderboard will appear once scramble play begins." />;
   }
   return (
     <div className="space-y-4">
+      <H2HBoard h2h={h2h} />
       <PoolBoard
         rows={rows.filter((r) => r.pool === "AD")}
         round={round}
@@ -377,6 +397,131 @@ function Day2Tab({ rows, round }: { rows: Day2EntryDisplayRow[]; round?: RoundRo
         round={round}
         label="Pool BC"
       />
+    </div>
+  );
+}
+
+function H2HBoard({ h2h }: { h2h: Day2H2HDisplayRow[] }) {
+  if (h2h.length === 0) return null;
+  return (
+    <Card>
+      <div className="px-3 py-2.5 border-b border-[var(--color-rule)]">
+        <div className="font-display text-sm text-[var(--color-navy)]">
+          Head to head
+        </div>
+        <div className="text-[10px] font-ui uppercase tracking-[0.2em] text-neutral-500">
+          One point per tee time · ½ on a tie · 5 points total
+        </div>
+      </div>
+      <ul>
+        {h2h.map((m) => {
+          const aWinning =
+            m.status !== "pending" && m.entry_a.raw < m.entry_b.raw;
+          const bWinning =
+            m.status !== "pending" && m.entry_b.raw < m.entry_a.raw;
+          const final = m.status === "final";
+          return (
+            <li
+              key={m.group_id}
+              className="grid items-center gap-3 px-3 py-2.5 border-b border-[var(--color-rule)] last:border-b-0"
+              style={{ gridTemplateColumns: "2.5rem 1fr auto 1fr 4.5rem" }}
+            >
+              <span className="font-mono text-sm text-[var(--color-stone)] tabular-nums">
+                {toRoman(m.group_number)}
+              </span>
+              <Side
+                entry={m.entry_a}
+                winning={aWinning}
+                halve={final && m.is_tie}
+                align="left"
+              />
+              <span className="font-body-serif italic text-xs text-neutral-500 px-1">
+                vs
+              </span>
+              <Side
+                entry={m.entry_b}
+                winning={bWinning}
+                halve={final && m.is_tie}
+                align="right"
+              />
+              <span
+                className={
+                  "font-ui uppercase text-[10px] tracking-[0.22em] text-right " +
+                  (final
+                    ? "text-[var(--color-navy)]"
+                    : m.status === "in_progress"
+                      ? "text-[var(--color-oxblood)]"
+                      : "text-neutral-500")
+                }
+              >
+                {final
+                  ? m.is_tie
+                    ? "Halved"
+                    : "Final"
+                  : m.status === "in_progress"
+                    ? `Thru ${Math.min(m.entry_a.thru, m.entry_b.thru)}`
+                    : "—"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
+function Side({
+  entry,
+  winning,
+  halve,
+  align,
+}: {
+  entry: Day2H2HDisplayRow["entry_a"];
+  winning: boolean;
+  halve: boolean;
+  align: "left" | "right";
+}) {
+  const justify = align === "right" ? "justify-end" : "";
+  const textAlign = align === "right" ? "text-right" : "";
+  return (
+    <div className={`min-w-0 ${textAlign}`}>
+      <div className={`flex items-center gap-2 min-w-0 ${justify}`}>
+        {align === "left" && (
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: entry.display_color }}
+          />
+        )}
+        <span
+          className={
+            "font-display truncate " +
+            (winning
+              ? "text-[var(--color-navy)] font-semibold"
+              : "text-neutral-700")
+          }
+          style={{ fontSize: 14 }}
+        >
+          {entry.team_name}
+          <span className="ml-1 text-[10px] font-ui uppercase text-neutral-500">
+            {entry.pool}
+          </span>
+        </span>
+        {align === "right" && (
+          <span
+            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: entry.display_color }}
+          />
+        )}
+      </div>
+      <div
+        className={`text-[10px] font-mono tabular-nums mt-0.5 ${textAlign} ${winning ? "text-[var(--color-navy)]" : "text-neutral-500"}`}
+      >
+        {entry.thru === 0
+          ? "—"
+          : `${entry.raw} · thru ${entry.thru}`}
+        {halve && " · ½"}
+        {!halve && winning && entry.thru === 18 ? " · 1 pt" : ""}
+      </div>
     </div>
   );
 }

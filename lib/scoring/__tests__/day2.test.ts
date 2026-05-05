@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { computeDay2PoolRanks, type Day2EntryInput } from "../day2";
+import {
+  computeDay2H2H,
+  computeDay2PoolRanks,
+  type Day2EntryInput,
+  type Day2H2HInput,
+} from "../day2";
 
 const scoresFull = (raw: number): Map<number, number> => {
   // Distribute `raw` strokes across 18 holes as evenly as possible.
@@ -26,7 +31,7 @@ const partial = (raw: number, holes: number): Map<number, number> => {
 };
 
 describe("computeDay2PoolRanks — complete pool", () => {
-  it("awards 4/3/2/1/0 by rank", () => {
+  it("awards 2.5/2/1.5/1/0.5 by rank", () => {
     const entries: Day2EntryInput[] = [
       { id: "t1", teamId: "team1", holeScores: scoresFull(65), manualRank: null },
       { id: "t2", teamId: "team2", holeScores: scoresFull(70), manualRank: null },
@@ -36,11 +41,11 @@ describe("computeDay2PoolRanks — complete pool", () => {
     ];
     const r = computeDay2PoolRanks(entries);
     expect(r.get("t1")!.rank).toBe(1);
-    expect(r.get("t1")!.points).toBe(4);
-    expect(r.get("t2")!.points).toBe(3);
-    expect(r.get("t3")!.points).toBe(2);
+    expect(r.get("t1")!.points).toBe(2.5);
+    expect(r.get("t2")!.points).toBe(2);
+    expect(r.get("t3")!.points).toBe(1.5);
     expect(r.get("t4")!.points).toBe(1);
-    expect(r.get("t5")!.points).toBe(0);
+    expect(r.get("t5")!.points).toBe(0.5);
     entries.forEach((e) => {
       expect(r.get(e.id)!.projected).toBe(false);
     });
@@ -72,9 +77,58 @@ describe("computeDay2PoolRanks — complete pool", () => {
     ];
     const r = computeDay2PoolRanks(entries);
     expect(r.get("b")!.rank).toBe(1);
-    expect(r.get("b")!.points).toBe(4);
+    expect(r.get("b")!.points).toBe(2.5);
     expect(r.get("a")!.rank).toBe(2);
-    expect(r.get("a")!.points).toBe(3);
+    expect(r.get("a")!.points).toBe(2);
+  });
+});
+
+describe("computeDay2H2H", () => {
+  function full(strokes: number): Map<number, number> {
+    return scoresFull(strokes);
+  }
+
+  it("awards 1 pt to the team with the lower raw on full 18", () => {
+    const input: Day2H2HInput = {
+      groupId: "tg",
+      groupNumber: 1,
+      entryA: { id: "ea", teamId: "ta", holeScores: full(70) },
+      entryB: { id: "eb", teamId: "tb", holeScores: full(74) },
+    };
+    const r = computeDay2H2H(input);
+    expect(r.status).toBe("final");
+    expect(r.winnerTeamId).toBe("ta");
+    expect(r.teamAPoints).toBe(1);
+    expect(r.teamBPoints).toBe(0);
+    expect(r.isTie).toBe(false);
+  });
+
+  it("splits 0.5 / 0.5 on a tie", () => {
+    const input: Day2H2HInput = {
+      groupId: "tg",
+      groupNumber: 1,
+      entryA: { id: "ea", teamId: "ta", holeScores: full(72) },
+      entryB: { id: "eb", teamId: "tb", holeScores: full(72) },
+    };
+    const r = computeDay2H2H(input);
+    expect(r.status).toBe("final");
+    expect(r.isTie).toBe(true);
+    expect(r.winnerTeamId).toBeNull();
+    expect(r.teamAPoints).toBe(0.5);
+    expect(r.teamBPoints).toBe(0.5);
+  });
+
+  it("does not award until both entries are through 18", () => {
+    const input: Day2H2HInput = {
+      groupId: "tg",
+      groupNumber: 1,
+      entryA: { id: "ea", teamId: "ta", holeScores: partial(40, 10) },
+      entryB: { id: "eb", teamId: "tb", holeScores: partial(45, 10) },
+    };
+    const r = computeDay2H2H(input);
+    expect(r.status).toBe("in_progress");
+    expect(r.teamAPoints).toBe(0);
+    expect(r.teamBPoints).toBe(0);
   });
 });
 

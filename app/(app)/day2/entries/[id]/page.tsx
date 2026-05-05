@@ -7,7 +7,10 @@ import {
 } from "@/lib/repo/scores";
 import { getRound, listHoles } from "@/lib/repo/rounds";
 import { listPlayers, listTeams } from "@/lib/repo/players";
-import { computeDay2PoolRankRows } from "@/lib/repo/standings";
+import {
+  computeDay2H2HRows,
+  computeDay2PoolRankRows,
+} from "@/lib/repo/standings";
 import {
   getTeeGroupForEntry,
   listEntryIdsForTeeGroup,
@@ -66,6 +69,9 @@ export default async function Day2EntryPage({
   );
 
   const poolRanks = computeDay2PoolRankRows();
+  const h2h = teeGroup
+    ? computeDay2H2HRows().find((r) => r.group_id === teeGroup.id) ?? null
+    : null;
 
   const scorer = teeGroup?.scorer_player_id
     ? allPlayers.find((p) => p.id === teeGroup.scorer_player_id) ?? null
@@ -80,6 +86,7 @@ export default async function Day2EntryPage({
       holes={holes}
       initialScores={allScores}
       poolRanks={poolRanks}
+      h2h={h2h}
       teamsById={teamsById}
       myId={me?.id ?? null}
       isAdmin={!!me?.is_admin}

@@ -1,5 +1,7 @@
-// Day 2 — two pools of 5, 2-man scramble. Rank per pool.
-// Points by rank: 1=4, 2=3, 3=2, 4=1, 5=0. (10 per pool, 20 total.)
+// Day 2 — two pools of 5, 2-man scramble. Each tee time also features a head-
+// to-head match between the AD and BC pair grouped together. Total 20 points
+// per round: 15 awarded by pool placement (2.5/2/1.5/1/0.5 per pool) and 5 by
+// the head-to-head matches (1 win / 0.5 tie · five tee times).
 
 export type Day2EntryInput = {
   id: string;
@@ -19,11 +21,11 @@ export type Day2EntryResult = {
 };
 
 const POOL_POINTS_BY_RANK: Record<number, number> = {
-  1: 4,
-  2: 3,
-  3: 2,
+  1: 2.5,
+  2: 2,
+  3: 1.5,
   4: 1,
-  5: 0,
+  5: 0.5,
 };
 
 export function computeDay2PoolRanks(
@@ -72,4 +74,82 @@ export function computeDay2PoolRanks(
   });
 
   return results;
+}
+
+// ---- Head-to-head matches (one per tee time) ----
+
+export type Day2H2HInput = {
+  groupId: string;
+  groupNumber: number;
+  entryA: { id: string; teamId: string; holeScores: Map<number, number> };
+  entryB: { id: string; teamId: string; holeScores: Map<number, number> };
+};
+
+export type Day2H2HResult = {
+  groupId: string;
+  groupNumber: number;
+  entryA: { id: string; teamId: string; raw: number; thru: number };
+  entryB: { id: string; teamId: string; raw: number; thru: number };
+  status: "pending" | "in_progress" | "final";
+  /** Winning team id when the match goes final and is not a tie. */
+  winnerTeamId: string | null;
+  isTie: boolean;
+  /** Awarded only once status === "final". */
+  teamAPoints: number;
+  teamBPoints: number;
+};
+
+export function computeDay2H2H(input: Day2H2HInput): Day2H2HResult {
+  const aThru = [...input.entryA.holeScores.keys()].length;
+  const bThru = [...input.entryB.holeScores.keys()].length;
+  const aRaw = [...input.entryA.holeScores.values()].reduce((s, x) => s + x, 0);
+  const bRaw = [...input.entryB.holeScores.values()].reduce((s, x) => s + x, 0);
+
+  const status: "pending" | "in_progress" | "final" =
+    aThru === 18 && bThru === 18
+      ? "final"
+      : aThru === 0 && bThru === 0
+        ? "pending"
+        : "in_progress";
+
+  let winnerTeamId: string | null = null;
+  let isTie = false;
+  let teamAPoints = 0;
+  let teamBPoints = 0;
+
+  if (status === "final") {
+    if (aRaw < bRaw) {
+      winnerTeamId = input.entryA.teamId;
+      teamAPoints = 1;
+    } else if (bRaw < aRaw) {
+      winnerTeamId = input.entryB.teamId;
+      teamBPoints = 1;
+    } else {
+      isTie = true;
+      teamAPoints = 0.5;
+      teamBPoints = 0.5;
+    }
+  }
+
+  return {
+    groupId: input.groupId,
+    groupNumber: input.groupNumber,
+    entryA: {
+      id: input.entryA.id,
+      teamId: input.entryA.teamId,
+      raw: aRaw,
+      thru: aThru,
+    },
+    entryB: {
+      id: input.entryB.id,
+      teamId: input.entryB.teamId,
+      raw: bRaw,
+      thru: bThru,
+    },
+    status,
+    winnerTeamId,
+    isTie,
+    teamAPoints,
+    teamBPoints,
+  };
 }

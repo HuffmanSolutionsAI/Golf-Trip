@@ -25,8 +25,8 @@ export default function FormatPage() {
       course: r2
         ? `${r2.course_name} · ${formatTeeTime(r2.tee_time)} tee`
         : "Talamore · 8:45 a.m. tee",
-      body: "Ten pairs across two pools — AD and BC. Each pair plays one ball, scramble format, gross to par. In each pool, first place takes four points, second three, third two, fourth one, fifth zero. Day II rewards good pairings.",
-      points: "20 points · pools",
+      body: "Ten pairs across two pools — AD and BC. Each pair plays one ball, scramble format, gross to par. Pool placement awards 2½ for first, 2 for second, 1½ for third, 1 for fourth, ½ for fifth — fifteen points total. Each tee time also pits the AD pair against the BC pair head-to-head for one point — half on a tie. Five tee times, five points. Twenty in all.",
+      points: "20 points · pools + h2h",
     },
     {
       num: "III",
