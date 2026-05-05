@@ -45,18 +45,19 @@ INSERT OR IGNORE INTO rounds (id, day, date, course_name, total_par, format, tee
   ('round-3', 3, '2026-05-09', 'Hyland Golf Club',           72, 'scramble_4man', '10:00:00');
 
 -- ------------------------------------------------------------------
--- Holes — Day 1 Pinewild Magnolia (placeholders; fill in at pro shop 5/7)
+-- Holes — Day 1 Pinewild Magnolia (Blue Tees · par 72 · 6856 yds).
+-- Pars and handicap indices match the club's published Blue scorecard.
 -- ------------------------------------------------------------------
 INSERT OR IGNORE INTO holes (id, round_id, hole_number, par, handicap_index) VALUES
-  ('h1-01','round-1', 1, 4, NULL),  ('h1-02','round-1', 2, 5, NULL),
-  ('h1-03','round-1', 3, 3, NULL),  ('h1-04','round-1', 4, 4, NULL),
-  ('h1-05','round-1', 5, 4, NULL),  ('h1-06','round-1', 6, 4, NULL),
-  ('h1-07','round-1', 7, 3, NULL),  ('h1-08','round-1', 8, 5, NULL),
-  ('h1-09','round-1', 9, 4, NULL),  ('h1-10','round-1',10, 4, NULL),
-  ('h1-11','round-1',11, 4, NULL),  ('h1-12','round-1',12, 3, NULL),
-  ('h1-13','round-1',13, 5, NULL),  ('h1-14','round-1',14, 4, NULL),
-  ('h1-15','round-1',15, 4, NULL),  ('h1-16','round-1',16, 4, NULL),
-  ('h1-17','round-1',17, 3, NULL),  ('h1-18','round-1',18, 5, NULL);
+  ('h1-01','round-1', 1, 5,  1),  ('h1-02','round-1', 2, 4, 11),
+  ('h1-03','round-1', 3, 3, 17),  ('h1-04','round-1', 4, 4, 13),
+  ('h1-05','round-1', 5, 4,  5),  ('h1-06','round-1', 6, 4,  9),
+  ('h1-07','round-1', 7, 3, 15),  ('h1-08','round-1', 8, 5,  3),
+  ('h1-09','round-1', 9, 4,  7),  ('h1-10','round-1',10, 4, 12),
+  ('h1-11','round-1',11, 4,  8),  ('h1-12','round-1',12, 3, 18),
+  ('h1-13','round-1',13, 5,  2),  ('h1-14','round-1',14, 4,  4),
+  ('h1-15','round-1',15, 3, 16),  ('h1-16','round-1',16, 4, 14),
+  ('h1-17','round-1',17, 4, 10),  ('h1-18','round-1',18, 5,  6);
 
 -- ------------------------------------------------------------------
 -- Holes — Day 2 Talamore (par 71)
