@@ -8,7 +8,10 @@ import {
 } from "@/lib/repo/scores";
 import { getRound, listHoles } from "@/lib/repo/rounds";
 import { getTeam, listPlayers, listTeams } from "@/lib/repo/players";
-import { computeDay2PoolRankRows } from "@/lib/repo/standings";
+import {
+  computeDay2H2HRows,
+  computeDay2PoolRankRows,
+} from "@/lib/repo/standings";
 import {
   getTeeGroupForEntry,
   listEntryIdsForTeeGroup,
@@ -73,6 +76,9 @@ export default async function EventEntryPage({
       const allScores: HoleScoreRow[] = entries.flatMap((info) =>
         listScoresForScrambleEntry(info.entry.id),
       );
+      const h2h = teeGroup
+        ? computeDay2H2HRows().find((r) => r.group_id === teeGroup.id) ?? null
+        : null;
       return {
         kind: "day2" as const,
         round,
@@ -83,6 +89,7 @@ export default async function EventEntryPage({
         scorer,
         teamsById,
         poolRanks: computeDay2PoolRankRows(),
+        h2h,
       };
     }
 
@@ -127,6 +134,7 @@ export default async function EventEntryPage({
         holes={data.holes}
         initialScores={data.allScores}
         poolRanks={data.poolRanks}
+        h2h={data.h2h}
         teamsById={data.teamsById}
         myId={me?.id ?? null}
         isAdmin={!!me?.is_admin}

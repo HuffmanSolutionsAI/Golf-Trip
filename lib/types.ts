@@ -389,3 +389,36 @@ export type Day3EntryDisplayRow = {
   total_points: number;
   projected: boolean;
 };
+
+// One per Day 2 tee group — the AD pair and BC pair grouped together play a
+// head-to-head match worth 1 point (0.5 / 0.5 on a tie).
+export type Day2H2HDisplayRow = {
+  group_id: string;
+  group_number: number;
+  scheduled_time: string | null;
+  entry_a: {
+    entry_id: string;
+    team_id: string;
+    team_name: string;
+    display_color: string;
+    pool: "AD" | "BC" | null;
+    participant_names: string[];
+    raw: number;
+    thru: number;
+    points: number;
+  };
+  entry_b: {
+    entry_id: string;
+    team_id: string;
+    team_name: string;
+    display_color: string;
+    pool: "AD" | "BC" | null;
+    participant_names: string[];
+    raw: number;
+    thru: number;
+    points: number;
+  };
+  status: "pending" | "in_progress" | "final";
+  winner_team_id: string | null;
+  is_tie: boolean;
+};

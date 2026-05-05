@@ -8,6 +8,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { toRoman, formatTeeTime } from "@/lib/utils";
 import type {
+  Day2H2HDisplayRow,
   Day2PoolRankRow,
   HoleRow,
   HoleScoreRow,
@@ -30,6 +31,7 @@ type Props = {
   holes: HoleRow[];
   initialScores: HoleScoreRow[];
   poolRanks: Day2PoolRankRow[];
+  h2h: Day2H2HDisplayRow | null;
   teamsById: Record<string, TeamRow>;
   myId: string | null;
   isAdmin: boolean;
@@ -233,6 +235,8 @@ export function Day2GroupScorecard(props: Props) {
               {!canEnter ? " · read only" : ""}
             </div>
           )}
+
+          {props.h2h && <H2HBanner h2h={props.h2h} />}
 
           <div className="mt-5 space-y-4">
             {props.entries.map((info, idx) => {
@@ -514,6 +518,81 @@ export function Day2GroupScorecard(props: Props) {
             playerLabel={sheet.label}
           />
         )}
+      </div>
+    </div>
+  );
+}
+
+function H2HBanner({ h2h }: { h2h: Day2H2HDisplayRow }) {
+  const headline = (() => {
+    if (h2h.status === "pending") return "Match starts at the first hole";
+    if (h2h.status === "in_progress") {
+      if (h2h.entry_a.raw === h2h.entry_b.raw) {
+        return `All square · thru ${Math.min(h2h.entry_a.thru, h2h.entry_b.thru)}`;
+      }
+      const leader =
+        h2h.entry_a.raw < h2h.entry_b.raw ? h2h.entry_a : h2h.entry_b;
+      const margin = Math.abs(h2h.entry_a.raw - h2h.entry_b.raw);
+      return `${leader.team_name} −${margin}`;
+    }
+    if (h2h.is_tie) return "Match halved · ½ pt each";
+    const winner =
+      h2h.winner_team_id === h2h.entry_a.team_id ? h2h.entry_a : h2h.entry_b;
+    return `${winner.team_name} wins · 1 pt`;
+  })();
+  const sub =
+    h2h.status === "final"
+      ? "Final"
+      : h2h.status === "in_progress"
+        ? "Live · 1 pt up for grabs"
+        : "Pending · 1 pt up for grabs";
+  return (
+    <div
+      className="mt-4"
+      style={{
+        padding: "12px 16px",
+        border: "1px solid var(--color-gold)",
+        background: "rgba(165,136,89,0.06)",
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-2 flex-wrap">
+        <div>
+          <div
+            className="font-ui uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.3em",
+              color: "var(--color-gold)",
+              fontWeight: 600,
+            }}
+          >
+            Head to head
+          </div>
+          <div
+            className="font-display mt-1"
+            style={{
+              fontSize: 22,
+              lineHeight: 1.1,
+              color: "var(--color-cream)",
+            }}
+          >
+            {headline}
+          </div>
+        </div>
+        <div
+          className="font-ui uppercase"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.28em",
+            color:
+              h2h.status === "in_progress"
+                ? "var(--color-oxblood)"
+                : "var(--color-stone)",
+            fontWeight: 600,
+          }}
+        >
+          {sub}
+        </div>
       </div>
     </div>
   );

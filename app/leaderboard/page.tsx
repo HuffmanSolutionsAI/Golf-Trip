@@ -3,6 +3,7 @@ import { listRounds } from "@/lib/repo/rounds";
 import {
   computeDay1IndividualLeaderboard,
   computeDay2EntryLeaderboard,
+  computeDay2H2HRows,
   computeDay3EntryLeaderboard,
   computeLeaderboard,
 } from "@/lib/repo/standings";
@@ -15,6 +16,7 @@ export default async function LeaderboardPage() {
   const overall = computeLeaderboard();
   const day1 = computeDay1IndividualLeaderboard();
   const day2 = computeDay2EntryLeaderboard();
+  const day2H2H = computeDay2H2HRows();
   const day3 = computeDay3EntryLeaderboard();
   const rounds = listRounds();
   const players = listPlayers();
@@ -32,6 +34,7 @@ export default async function LeaderboardPage() {
       overall={overall}
       day1={day1}
       day2={day2}
+      day2H2H={day2H2H}
       day3={day3}
       rounds={rounds}
       playersByTeam={byTeam}

@@ -5,7 +5,10 @@ import {
   listScrambleEntries,
 } from "@/lib/repo/scores";
 import { listPlayers, listTeams } from "@/lib/repo/players";
-import { computeDay2EntryLeaderboard } from "@/lib/repo/standings";
+import {
+  computeDay2EntryLeaderboard,
+  computeDay2H2HRows,
+} from "@/lib/repo/standings";
 import { listTeeGroupsWithMembers } from "@/lib/repo/teeGroups";
 import { toRoman, formatTeeTime } from "@/lib/utils";
 
@@ -36,6 +39,9 @@ export default function Day2IndexPage() {
 
   const groups = listTeeGroupsWithMembers().filter(
     (g) => g.round_id === round.id,
+  );
+  const h2hByGroup = new Map(
+    computeDay2H2HRows().map((r) => [r.group_id, r]),
   );
 
   return (
@@ -72,8 +78,9 @@ export default function Day2IndexPage() {
               maxWidth: 540,
             }}
           >
-            Five tee times. One AD pair plus one BC pair in each. Best ball of
-            the pair, gross to par. Pool ranking on the leaderboard.
+            Five tee times. One AD pair plus one BC pair in each, head-to-head
+            for a point. Pool placement awards 2½/2/1½/1/½ — fifteen points
+            in pools, five in head-to-head, twenty in all.
           </p>
         </div>
       </div>
@@ -107,6 +114,46 @@ export default function Day2IndexPage() {
                       </span>
                     )}
                   </div>
+                  {(() => {
+                    const h2h = h2hByGroup.get(g.id);
+                    if (!h2h) return null;
+                    const aTeam = teams.get(h2h.entry_a.team_id);
+                    const bTeam = teams.get(h2h.entry_b.team_id);
+                    const label = (() => {
+                      if (h2h.status === "pending") return "H2H · pending";
+                      if (h2h.status === "in_progress") {
+                        if (h2h.entry_a.raw === h2h.entry_b.raw) {
+                          return `H2H · all square · thru ${Math.min(h2h.entry_a.thru, h2h.entry_b.thru)}`;
+                        }
+                        const leader =
+                          h2h.entry_a.raw < h2h.entry_b.raw ? aTeam : bTeam;
+                        const margin = Math.abs(
+                          h2h.entry_a.raw - h2h.entry_b.raw,
+                        );
+                        return `H2H · ${leader?.name ?? "—"} −${margin}`;
+                      }
+                      if (h2h.is_tie) return "H2H · halved";
+                      const winner =
+                        h2h.winner_team_id === aTeam?.id ? aTeam : bTeam;
+                      return `H2H · ${winner?.name ?? "—"} wins`;
+                    })();
+                    return (
+                      <span
+                        className="font-ui uppercase"
+                        style={{
+                          fontSize: 10,
+                          letterSpacing: "0.22em",
+                          color:
+                            h2h.status === "in_progress"
+                              ? "var(--color-oxblood)"
+                              : "var(--color-stone)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {label}
+                      </span>
+                    );
+                  })()}
                 </div>
                 {groupEntries.map((e) => {
                   const team = teams.get(e.team_id);

@@ -135,7 +135,7 @@ export default async function HomePage() {
                 marginInline: "auto",
               }}
             >
-              {liveRound ? heroBlurb(liveRound, liveThru, standings) : upcomingRound ? `${upcomingRound.format === "singles" ? "Singles · net stroke play." : upcomingRound.format === "scramble_2man" ? "Two-man scramble. Pools AD & BC." : "The team scramble. The Cup is decided."} Tees off ${formatTeeTime(upcomingRound.tee_time)}.` : "Three rounds in the books. The Cup is awarded."}
+              {liveRound ? heroBlurb(liveRound, liveThru, standings) : upcomingRound ? `${upcomingRound.format === "singles" ? "Singles · net stroke play." : upcomingRound.format === "scramble_2man" ? "Two-man scramble. Pools AD & BC, plus head-to-head per tee time." : "The team scramble. The Cup is decided."} Tees off ${formatTeeTime(upcomingRound.tee_time)}.` : "Three rounds in the books. The Cup is awarded."}
             </p>
             {liveRound && (
               <div className="hidden md:flex gap-2.5 mt-7">
@@ -405,7 +405,7 @@ function heroBlurb(
     round.format === "singles"
       ? "Singles · net stroke play."
       : round.format === "scramble_2man"
-        ? "Two-man scramble. Pools AD & BC."
+        ? "Two-man scramble · pools + head-to-head per tee time."
         : "Four men. One ball. The Cup is decided.";
   const thruBlurb = thru > 0 ? ` ${thru === 18 ? "Final round." : `Through hole ${thru}.`}` : "";
   return `${fmt}${thruBlurb}${closeBlurb}`;
@@ -413,7 +413,7 @@ function heroBlurb(
 
 function formatLabel(f: string): string {
   if (f === "singles") return "Singles · net stroke play";
-  if (f === "scramble_2man") return "Two-man scramble · pools AD & BC";
+  if (f === "scramble_2man") return "Two-man scramble · pools + head-to-head";
   return "Four-man team scramble · for the Cup";
 }
 
